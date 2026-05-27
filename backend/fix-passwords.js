@@ -8,8 +8,9 @@ const pool = new Pool({
 });
 
 async function fixPasswords() {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     console.log('Fetching users to fix passwords...');
     const result = await client.query('SELECT id, roll_number FROM users');
     
@@ -27,7 +28,7 @@ async function fixPasswords() {
   } catch (err) {
     console.error('Error fixing passwords:', err);
   } finally {
-    client.release();
+    if (client) client.release();
     pool.end();
   }
 }
