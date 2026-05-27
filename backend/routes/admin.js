@@ -166,9 +166,13 @@ module.exports = (pool) => {
     try {
       const query = `
         SELECT t.id, t.name, t.status, t.current_members as members, 
-               p.title as project, p.progress
+               p.title as project, p.id as project_id, p.progress,
+               m.name as mentor_name, m.id as mentor_id,
+               e.name as evaluator_name, e.id as evaluator_id
         FROM teams t
         LEFT JOIN projects p ON t.id = p.team_id
+        LEFT JOIN users m ON p.mentor_id = m.id
+        LEFT JOIN users e ON p.evaluator_id = e.id
         ORDER BY t.created_at DESC
       `;
       const result = await pool.query(query);
@@ -176,6 +180,40 @@ module.exports = (pool) => {
     } catch (error) {
       console.error('Admin get teams error:', error);
       res.status(500).json({ error: 'Failed to fetch teams' });
+    }
+  });
+
+  // Allocate mentor and evaluator to a team (via their project)
+  router.put('/teams/:teamId/allocate', async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const { mentorId, evaluatorId } = req.body;
+
+      if (!mentorId || !evaluatorId) {
+        return res.status(400).json({ error: 'Mentor and Evaluator are both required' });
+      }
+      
+      if (mentorId === evaluatorId) {
+        return res.status(400).json({ error: 'Mentor and Evaluator cannot be the same person' });
+      }
+
+      const updateQuery = `
+        UPDATE projects 
+        SET mentor_id = $1, evaluator_id = $2, updated_at = CURRENT_TIMESTAMP
+        WHERE team_id = $3
+        RETURNING id, team_id, mentor_id, evaluator_id
+      `;
+      
+      const result = await pool.query(updateQuery, [mentorId, evaluatorId, teamId]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Project not found for this team' });
+      }
+
+      res.json({ success: true, allocation: result.rows[0] });
+    } catch (error) {
+      console.error('Admin allocate team error:', error);
+      res.status(500).json({ error: 'Failed to allocate team' });
     }
   });
 

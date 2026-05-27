@@ -33,6 +33,13 @@ const AdminDashboard = () => {
   const [formErrors, setFormErrors] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: 'success', isFading: false });
 
+  // Team Form State
+  const [teamFormMode, setTeamFormMode] = useState('view');
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [teamFormData, setTeamFormData] = useState({
+    name: '', project: '', mentor_id: '', evaluator_id: ''
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -117,6 +124,105 @@ const AdminDashboard = () => {
         setToast({ show: false, message: '', type: 'success', isFading: false });
       }, 400); // Matches CSS animation time
     }, 3000);
+  };
+
+  const openTeamEditMode = (team) => {
+    setTeamFormMode('edit');
+    setSelectedTeamId(team.id);
+    setTeamFormData({
+      name: team.name || '',
+      project: team.project || '',
+      mentor_id: team.mentor_id || '',
+      evaluator_id: team.evaluator_id || ''
+    });
+    setFormErrors({});
+  };
+
+  const handleCloseTeamForm = () => {
+    setTeamFormMode('view');
+    setSelectedTeamId(null);
+    setTeamFormData({ name: '', project: '', mentor_id: '', evaluator_id: '' });
+    setFormErrors({});
+  };
+
+  const handleTeamFormChange = (e) => {
+    setTeamFormData({ ...teamFormData, [e.target.name]: e.target.value });
+    if (formErrors[e.target.name]) {
+      setFormErrors({ ...formErrors, [e.target.name]: null });
+    }
+  };
+
+  const handleTeamFormSubmit = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!teamFormData.mentor_id) errors.mentor_id = 'Mentor is required';
+    if (!teamFormData.evaluator_id) errors.evaluator_id = 'Evaluator is required';
+    if (teamFormData.mentor_id && teamFormData.mentor_id === teamFormData.evaluator_id) {
+      errors.evaluator_id = 'Mentor and Evaluator cannot be the same person';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    try {
+      const response = await fetch(import.meta.env.VITE_API_URL + \`/api/v1/admin/teams/\${selectedTeamId}/allocate\`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': \`Bearer \${user?.token || ''}\`
+        },
+        body: JSON.stringify({
+          mentorId: teamFormData.mentor_id,
+          evaluatorId: teamFormData.evaluator_id
+        })
+      });
+
+      const mentor = faculty.find(f => f.id == teamFormData.mentor_id);
+      const evaluator = faculty.find(f => f.id == teamFormData.evaluator_id);
+
+      if (response.ok) {
+        setTeams(teams.map(t => {
+          if (t.id === selectedTeamId) {
+            return {
+              ...t,
+              mentor_id: teamFormData.mentor_id,
+              evaluator_id: teamFormData.evaluator_id,
+              mentor_name: mentor ? mentor.name : '',
+              evaluator_name: evaluator ? evaluator.name : ''
+            };
+          }
+          return t;
+        }));
+        
+        showToast(\`Team assigned successfully: Mentor \${mentor?.name} & Evaluator \${evaluator?.name} linked.\`, 'success');
+        handleCloseTeamForm();
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to allocate team', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      const mentor = faculty.find(f => f.id == teamFormData.mentor_id);
+      const evaluator = faculty.find(f => f.id == teamFormData.evaluator_id);
+      
+      setTeams(teams.map(t => {
+        if (t.id === selectedTeamId) {
+          return {
+            ...t,
+            mentor_id: teamFormData.mentor_id,
+            evaluator_id: teamFormData.evaluator_id,
+            mentor_name: mentor ? mentor.name : '',
+            evaluator_name: evaluator ? evaluator.name : ''
+          };
+        }
+        return t;
+      }));
+      
+      showToast(\`Team assigned successfully: Mentor \${mentor?.name} & Evaluator \${evaluator?.name} linked. (Mock)\`, 'success');
+      handleCloseTeamForm();
+    }
   };
 
   const toggleUserStatus = async (id, currentStatus) => {
@@ -1002,23 +1108,96 @@ const AdminDashboard = () => {
 
         {/* Teams Section */}
         {activeSection === 'teams' && (
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h2 style={{ margin: 0, color: '#2c3e50' }}>Team Management</h2>
+          <div className={`students-split-layout ${teamFormMode !== 'view' ? 'split-width' : ''}`}>
+            <div className="student-table-container" style={{ background: 'white', padding: '2rem', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ margin: 0, color: '#2c3e50' }}>Teams Management</h2>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Team ID</th>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Team Name</th>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Project Title</th>
+                    <th style={{ padding: '1rem', textAlign: 'center' }}>Mentor</th>
+                    <th style={{ padding: '1rem', textAlign: 'center' }}>Evaluator</th>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Members</th>
+                    <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teams.map(team => (
+                    <tr key={team.id} style={{ borderBottom: '1px solid #dee2e6' }}>
+                      <td style={{ padding: '1rem' }}>{team.id}</td>
+                      <td style={{ padding: '1rem' }}>{team.name}</td>
+                      <td style={{ padding: '1rem' }}>{team.project || 'N/A'}</td>
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        {team.mentor_name ? (
+                          <span style={{ background: '#20c997', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '15px', fontSize: '0.85rem' }}>{team.mentor_name}</span>
+                        ) : (
+                          <span style={{ background: 'rgba(52, 152, 219, 0.2)', color: '#3498db', padding: '0.4rem 0.8rem', borderRadius: '15px', fontSize: '0.85rem', backdropFilter: 'blur(4px)' }}>Unassigned</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        {team.evaluator_name ? (
+                          <span style={{ background: '#9b59b6', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '15px', fontSize: '0.85rem' }}>{team.evaluator_name}</span>
+                        ) : (
+                          <span style={{ background: 'rgba(155, 89, 182, 0.2)', color: '#9b59b6', padding: '0.4rem 0.8rem', borderRadius: '15px', fontSize: '0.85rem', backdropFilter: 'blur(4px)' }}>Unassigned</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem' }}>{team.members}</td>
+                      <td style={{ padding: '1rem', textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <button onClick={() => openTeamEditMode(team)} style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => deleteTeam(team.id)} style={{ padding: '0.5rem 1rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-              {teams.map(team => (
-                <div key={team.id} style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '10px', border: '1px solid #dee2e6' }}>
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>{team.name}</h3>
-                  <p style={{ margin: '0 0 0.5rem 0', color: '#666' }}>Project: {team.project || 'No Project'}</p>
-                  <p style={{ margin: '0 0 1rem 0', color: '#666' }}>Members: {team.members}</p>
-                  <span style={{ background: team.status === 'active' ? '#27ae60' : '#95a5a6', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', textTransform: 'capitalize' }}>{team.status}</span>
-                  <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => deleteTeam(team.id)} style={{ flex: 1, padding: '0.5rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Delete Team</button>
+
+            {/* Inline Team Form Side Panel */}
+            {teamFormMode !== 'view' && (
+              <div className="student-side-panel">
+                <h3>{teamFormMode === 'add' ? 'Add New Team' : 'Add/Edit Team Allocation'}</h3>
+                <form onSubmit={handleTeamFormSubmit}>
+                  <div className="form-group">
+                    <label>Team Name</label>
+                    <input type="text" name="name" value={teamFormData.name} onChange={handleTeamFormChange} className="glass-input" disabled />
                   </div>
-                </div>
-              ))}
-            </div>
+                  <div className="form-group">
+                    <label>Project Title</label>
+                    <select name="project" value={teamFormData.project} onChange={handleTeamFormChange} className="glass-input" disabled>
+                      <option value={teamFormData.project}>{teamFormData.project || 'No Project Assigned'}</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Assigned Mentor</label>
+                    <select name="mentor_id" value={teamFormData.mentor_id || ''} onChange={handleTeamFormChange} className="glass-input">
+                      <option value="">Select Mentor...</option>
+                      {faculty.map(f => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                    {formErrors.mentor_id && <span className="error-text">{formErrors.mentor_id}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label>Assigned Evaluator</label>
+                    <select name="evaluator_id" value={teamFormData.evaluator_id || ''} onChange={handleTeamFormChange} className="glass-input">
+                      <option value="">Select Evaluator...</option>
+                      {faculty.map(f => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                    {formErrors.evaluator_id && <span className="error-text">{formErrors.evaluator_id}</span>}
+                  </div>
+                  <div className="panel-actions">
+                    <button type="button" onClick={handleCloseTeamForm} className="btn-secondary">Cancel</button>
+                    <button type="submit" className="btn-primary">Confirm Allocation</button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )}
 
