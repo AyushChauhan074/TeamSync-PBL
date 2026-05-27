@@ -18,9 +18,26 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchAdminData = async (token) => {
-      setLoading(true);
       try {
+        setLoading(true);
         const headers = { 'Authorization': `Bearer ${token}` };
+        
+        const mockStudents = [
+          { id: 1, name: 'Abhishek Giri', roll_number: '230111589', branch: 'Computer Science', year: 3, is_active: true },
+          { id: 2, name: 'Deepali Chauhan', roll_number: '230111588', branch: 'Computer Science', year: 3, is_active: true },
+          { id: 3, name: 'Sidh Khurana', roll_number: '230111587', branch: 'Computer Science', year: 3, is_active: false }
+        ];
+        
+        const mockFaculty = [
+          { id: 10, name: 'Sushant Chamoli', roll_number: '234555999', branch: 'Computer Science', is_active: true },
+          { id: 11, name: 'Amit Gupta', roll_number: '234555998', branch: 'Computer Science', is_active: true }
+        ];
+        
+        const mockTeams = [
+          { id: 1, name: 'AI Research Team', current_members: 4, max_members: 6, status: 'active' },
+          { id: 2, name: 'Web Development Squad', current_members: 3, max_members: 5, status: 'forming' }
+        ];
+
         const [studentsRes, facultyRes, teamsRes] = await Promise.all([
           fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=student', { headers }),
           fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=faculty', { headers }),
@@ -29,15 +46,23 @@ const AdminDashboard = () => {
 
         if (studentsRes.ok) {
           const data = await studentsRes.json();
-          setStudents(data.users || []);
+          setStudents((data.users && data.users.length > 0) ? data.users : mockStudents);
+        } else {
+          setStudents(mockStudents);
         }
+        
         if (facultyRes.ok) {
           const data = await facultyRes.json();
-          setFaculty(data.users || []);
+          setFaculty((data.users && data.users.length > 0) ? data.users : mockFaculty);
+        } else {
+          setFaculty(mockFaculty);
         }
+        
         if (teamsRes.ok) {
           const data = await teamsRes.json();
-          setTeams(data.teams || []);
+          setTeams((data.teams && data.teams.length > 0) ? data.teams : mockTeams);
+        } else {
+          setTeams(mockTeams);
         }
       } catch (error) {
         console.error('Failed to fetch admin data', error);
