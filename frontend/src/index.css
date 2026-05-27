@@ -7,25 +7,21 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Prevent horizontal leaking from absolute elements */
-  overflow-x: hidden;
+  /* Kill mobile elastic overscroll/bounce effect globally but allow trackpad */
+  overscroll-behavior-y: none;
   
-  /* Kill mobile elastic overscroll/bounce effect globally */
-  overscroll-behavior: none;
-  
-  /* Lock width strictly to the viewport (100% prevents scrollbar width bugs) */
+  /* Lock width strictly to the viewport */
   width: 100%;
   min-height: 100vh;
   position: relative;
 }
 
 #root {
-  /* Lock the React mounting root as well */
+  /* Lock the React mounting root to prevent horizontal leaks from absolute elements */
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
-  overscroll-behavior: none;
 }
 
 code {
