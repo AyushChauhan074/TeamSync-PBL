@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { Pool } = require('pg');
 require('dotenv').config();
-const { authMiddleware, adminOnly } = require('./middleware/auth');
+const { authMiddleware, adminOnly, maintenanceGate } = require('./middleware/auth');
 const jwt = require('jsonwebtoken');
 
 const app = express();
@@ -68,10 +68,10 @@ const adminRoutes = require('./routes/admin')(pool);
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', authMiddleware, userRoutes);
-app.use('/api/v1/teams', authMiddleware, teamRoutes);
-app.use('/api/v1/projects', authMiddleware, projectRoutes);
-app.use('/api/v1/messages', authMiddleware, messageRoutes);
+app.use('/api/v1/users', authMiddleware, maintenanceGate(pool), userRoutes);
+app.use('/api/v1/teams', authMiddleware, maintenanceGate(pool), teamRoutes);
+app.use('/api/v1/projects', authMiddleware, maintenanceGate(pool), projectRoutes);
+app.use('/api/v1/messages', authMiddleware, maintenanceGate(pool), messageRoutes);
 app.use('/api/v1/admin', authMiddleware, adminOnly, adminRoutes);
 
 // Health check
@@ -169,6 +169,29 @@ io.on('connection', (socket) => {
     await pool.query(`
       UPDATE users SET designation = 'Professor' 
       WHERE role = 'faculty' AND designation IS NULL;
+    `);
+
+    // Create configurations table for system settings
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS configurations (
+        key VARCHAR(100) PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Seed default configuration values (won't overwrite existing)
+    await pool.query(`
+      INSERT INTO configurations (key, value) VALUES
+        ('allow_email_alerts', 'true'),
+        ('maintenance_mode', 'false'),
+        ('active_term', 'B.Tech Even Semester 2026'),
+        ('evaluation_threshold', '3'),
+        ('min_team_size', '3'),
+        ('max_team_size', '4'),
+        ('github_sync_interval', 'daily'),
+        ('last_backup_time', '')
+      ON CONFLICT (key) DO NOTHING;
     `);
 
     console.log('Database auto-migration complete.');

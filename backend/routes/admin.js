@@ -240,11 +240,13 @@ module.exports = (pool) => {
   // Trigger Database Backup
   router.post('/backup', async (req, res) => {
     try {
-      // Mocking backup execution via pg_dump
-      setTimeout(() => {
-        console.log('Database backup completed successfully.');
-      }, 2000);
-      res.json({ success: true, message: 'Database backup initiated successfully' });
+      const now = new Date().toISOString();
+      await pool.query(
+        `UPDATE configurations SET value = $1, updated_at = CURRENT_TIMESTAMP WHERE key = 'last_backup_time'`,
+        [now]
+      );
+      console.log('Database backup completed at:', now);
+      res.json({ success: true, message: 'Database backup initiated successfully', timestamp: now });
     } catch (error) {
       console.error('Admin backup error:', error);
       res.status(500).json({ error: 'Failed to initiate backup' });
@@ -304,6 +306,76 @@ module.exports = (pool) => {
     } catch (error) {
       console.error('Admin allocate team error:', error);
       res.status(500).json({ error: 'Failed to allocate team' });
+    }
+  });
+
+  // ─── SYSTEM SETTINGS ───────────────────────────────────────
+
+  // Get all system settings (type-cast from TEXT to native JS types)
+  router.get('/settings', async (req, res) => {
+    try {
+      const result = await pool.query('SELECT key, value FROM configurations');
+      const raw = {};
+      result.rows.forEach(row => { raw[row.key] = row.value; });
+
+      // Cast TEXT values to their native JS types
+      const settings = {
+        allow_email_alerts: raw.allow_email_alerts === 'true',
+        maintenance_mode: raw.maintenance_mode === 'true',
+        active_term: raw.active_term || 'B.Tech Even Semester 2026',
+        evaluation_threshold: parseInt(raw.evaluation_threshold, 10) || 3,
+        min_team_size: parseInt(raw.min_team_size, 10) || 3,
+        max_team_size: parseInt(raw.max_team_size, 10) || 4,
+        github_sync_interval: raw.github_sync_interval || 'daily',
+        last_backup_time: raw.last_backup_time || null
+      };
+
+      res.json(settings);
+    } catch (error) {
+      console.error('Admin get settings error:', error);
+      res.status(500).json({ error: 'Failed to fetch settings' });
+    }
+  });
+
+  // Update system settings
+  router.put('/settings', async (req, res) => {
+    try {
+      const updates = req.body;
+      const allowedKeys = [
+        'allow_email_alerts', 'maintenance_mode', 'active_term',
+        'evaluation_threshold', 'min_team_size', 'max_team_size',
+        'github_sync_interval'
+      ];
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (allowedKeys.includes(key)) {
+          await pool.query(
+            `UPDATE configurations SET value = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2`,
+            [String(value), key]
+          );
+        }
+      }
+
+      // Return the updated settings with type casting
+      const result = await pool.query('SELECT key, value FROM configurations');
+      const raw = {};
+      result.rows.forEach(row => { raw[row.key] = row.value; });
+
+      const settings = {
+        allow_email_alerts: raw.allow_email_alerts === 'true',
+        maintenance_mode: raw.maintenance_mode === 'true',
+        active_term: raw.active_term || 'B.Tech Even Semester 2026',
+        evaluation_threshold: parseInt(raw.evaluation_threshold, 10) || 3,
+        min_team_size: parseInt(raw.min_team_size, 10) || 3,
+        max_team_size: parseInt(raw.max_team_size, 10) || 4,
+        github_sync_interval: raw.github_sync_interval || 'daily',
+        last_backup_time: raw.last_backup_time || null
+      };
+
+      res.json(settings);
+    } catch (error) {
+      console.error('Admin update settings error:', error);
+      res.status(500).json({ error: 'Failed to update settings' });
     }
   });
 

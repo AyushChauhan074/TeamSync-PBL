@@ -35,4 +35,37 @@ const adminOnly = (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware, adminOnly };
+/**
+ * Maintenance mode gate — blocks non-admin users with 503 when maintenance is active.
+ * Reads the maintenance_mode flag directly from the configurations table.
+ * Must be used AFTER authMiddleware so req.user is available.
+ */
+const maintenanceGate = (pool) => {
+  return async (req, res, next) => {
+    try {
+      // Admins always pass through
+      if (req.user && req.user.role === 'admin') {
+        return next();
+      }
+
+      const result = await pool.query(
+        `SELECT value FROM configurations WHERE key = 'maintenance_mode'`
+      );
+
+      if (result.rows.length > 0 && result.rows[0].value === 'true') {
+        return res.status(503).json({
+          error: 'System is currently under maintenance. Please try again later.',
+          maintenance: true
+        });
+      }
+
+      next();
+    } catch (error) {
+      // If configurations table doesn't exist yet, let the request through
+      console.error('Maintenance gate check failed:', error.message);
+      next();
+    }
+  };
+};
+
+module.exports = { authMiddleware, adminOnly, maintenanceGate };

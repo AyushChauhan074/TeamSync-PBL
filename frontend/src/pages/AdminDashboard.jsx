@@ -41,6 +41,19 @@ const AdminDashboard = () => {
     name: '', project: '', mentor_id: '', evaluator_id: ''
   });
 
+  // System Settings State
+  const [settings, setSettings] = useState({
+    allow_email_alerts: true,
+    maintenance_mode: false,
+    active_term: 'B.Tech Even Semester 2026',
+    evaluation_threshold: 3,
+    min_team_size: 3,
+    max_team_size: 4,
+    github_sync_interval: 'daily',
+    last_backup_time: null
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -91,6 +104,7 @@ const AdminDashboard = () => {
       if (parsedUser.role === 'admin') {
         setUser(parsedUser);
         fetchAdminData(localStorage.getItem('token'));
+        fetchSettingsData(); // Load system settings
       } else {
         navigate('/login');
       }
@@ -433,16 +447,74 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchSettingsData = async () => {
+    try {
+      setSettingsLoading(true);
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/settings', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleSettingChange = async (key, value) => {
+    // Optimistic update
+    const previousSettings = { ...settings };
+    setSettings({ ...settings, [key]: value });
+
+    try {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ [key]: value })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save setting');
+      }
+      
+      const updatedSettings = await response.json();
+      setSettings(updatedSettings);
+      showToast('Setting updated successfully', 'success');
+      
+      // If maintenance mode was toggled, broadcast to connected sockets
+      if (key === 'maintenance_mode' && value === true) {
+        const socket = io(socketUrl, { withCredentials: true });
+        socket.emit('triggerMaintenance', { role: 'admin' });
+      }
+    } catch (error) {
+      console.error('Error updating setting:', error);
+      setSettings(previousSettings); // Revert on failure
+      showToast('Failed to update setting', 'error');
+    }
+  };
+
   const handleMaintenanceMode = () => {
-    if (window.confirm("Are you sure you want to enable global maintenance mode? This will make the system read-only for all users.")) {
-      const socket = io(socketUrl, { withCredentials: true });
-      socket.emit('triggerMaintenance', { role: 'admin' });
-      alert("Maintenance mode signal broadcasted.");
+    const isCurrentlyActive = settings.maintenance_mode;
+    if (isCurrentlyActive) {
+      if (window.confirm("Are you sure you want to disable maintenance mode? Students and faculty will regain access.")) {
+        handleSettingChange('maintenance_mode', false);
+      }
+    } else {
+      if (window.confirm("Are you sure you want to enable global maintenance mode? This will lock out all non-admin users immediately.")) {
+        handleSettingChange('maintenance_mode', true);
+      }
     }
   };
 
   const handleBackup = async () => {
     try {
+      showToast('Initiating database backup...', 'success');
       const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/backup', {
         method: 'POST',
         headers: {
@@ -450,13 +522,15 @@ const AdminDashboard = () => {
         }
       });
       if (response.ok) {
-        alert('Backup initiated successfully. The file will be saved on the server.');
+        const data = await response.json();
+        setSettings({ ...settings, last_backup_time: data.timestamp });
+        showToast('Database backup completed successfully', 'success');
       } else {
-        alert('Failed to initiate backup');
+        showToast('Failed to initiate backup', 'error');
       }
     } catch (error) {
       console.error('Backup error:', error);
-      alert('An error occurred during backup request.');
+      showToast('An error occurred during backup request.', 'error');
     }
   };
 
@@ -1164,23 +1238,149 @@ const AdminDashboard = () => {
 
         {/* Settings Section */}
         {activeSection === 'settings' && (
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ marginBottom: '2rem', color: '#2c3e50' }}>System Settings</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ padding: '1.5rem', background: '#f8f9fa', borderRadius: '10px' }}>
-                <h3 style={{ margin: '0 0 1rem 0' }}>Email Notifications</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <input type="checkbox" defaultChecked />
-                  <span>Send email notifications to users</span>
-                </label>
+          <div className="settings-container" style={{ position: 'relative' }}>
+            <h2 style={{ marginBottom: '2rem', color: '#1f2937', fontSize: '1.75rem', fontWeight: '800' }}>System Settings</h2>
+            
+            {settingsLoading && (
+              <div style={{ position: 'absolute', top: 0, right: 0, color: '#3b82f6', fontWeight: '600' }}>Loading...</div>
+            )}
+
+            <div className="settings-grid">
+              {/* COLUMN 1 */}
+              <div className="settings-column">
+                
+                {/* Card 1: App Toggles */}
+                <div className="settings-card">
+                  <h3 className="settings-card-title">Application Toggles & Automation</h3>
+                  <p className="settings-card-subtitle">Manage global system behaviors</p>
+                  
+                  <div className="setting-row">
+                    <div className="setting-label-group">
+                      <h4 className="setting-label">Email Notifications Master Toggle</h4>
+                      <p className="setting-description">Allow system to dispatch automated mailers to students and faculty regarding project approvals, team formations, and grading deadlines.</p>
+                    </div>
+                    <label className="toggle-switch">
+                      <input 
+                        type="checkbox" 
+                        checked={settings.allow_email_alerts} 
+                        onChange={(e) => handleSettingChange('allow_email_alerts', e.target.checked)}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+
+                  <hr className="settings-card-divider" />
+
+                  <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                    <div className="setting-label-group" style={{ marginBottom: '1rem' }}>
+                      <h4 className="setting-label">System Maintenance Mode</h4>
+                      <p className="setting-description">Block authentication routes for non-admin accounts. Safe redirection to maintenance landing page.</p>
+                    </div>
+                    <button 
+                      onClick={handleMaintenanceMode} 
+                      className={`maintenance-btn ${settings.maintenance_mode ? 'active' : 'inactive'}`}
+                    >
+                      {settings.maintenance_mode ? 'System Under Maintenance (Click to Disable)' : 'Enable Maintenance Mode'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card 2: Academic Params */}
+                <div className="settings-card">
+                  <h3 className="settings-card-title">Global Academic Parameters</h3>
+                  <p className="settings-card-subtitle">Configure institutional boundaries and constraints</p>
+                  
+                  <div className="settings-form-group">
+                    <label className="settings-form-label">Active Term Bounds</label>
+                    <select 
+                      className="settings-select"
+                      value={settings.active_term}
+                      onChange={(e) => handleSettingChange('active_term', e.target.value)}
+                    >
+                      <option value="B.Tech Odd Semester 2025">B.Tech Odd Semester 2025</option>
+                      <option value="B.Tech Even Semester 2026">B.Tech Even Semester 2026</option>
+                      <option value="MCA Odd Semester 2026">MCA Odd Semester 2026</option>
+                      <option value="Summer Term 2026">Summer Term 2026</option>
+                    </select>
+                  </div>
+
+                  <div className="settings-form-group">
+                    <label className="settings-form-label">Milestone Evaluation Threshold</label>
+                    <input 
+                      type="number" 
+                      className="settings-input"
+                      value={settings.evaluation_threshold}
+                      onChange={(e) => handleSettingChange('evaluation_threshold', parseInt(e.target.value))}
+                      min="1" max="10"
+                    />
+                    <p className="setting-description" style={{ marginTop: '0.5rem' }}>Defines the physical project presentation deadline count.</p>
+                  </div>
+
+                  <div className="settings-inline-group">
+                    <div className="settings-form-group">
+                      <label className="settings-form-label">Min Headcount</label>
+                      <input 
+                        type="number" 
+                        className="settings-input"
+                        value={settings.min_team_size}
+                        onChange={(e) => handleSettingChange('min_team_size', parseInt(e.target.value))}
+                        min="1" max="10"
+                      />
+                    </div>
+                    <div className="settings-form-group">
+                      <label className="settings-form-label">Max Headcount</label>
+                      <input 
+                        type="number" 
+                        className="settings-input"
+                        value={settings.max_team_size}
+                        onChange={(e) => handleSettingChange('max_team_size', parseInt(e.target.value))}
+                        min="2" max="15"
+                      />
+                    </div>
+                  </div>
+                  <p className="setting-description" style={{ marginTop: '0.5rem', marginBottom: '1.25rem' }}>Group formation rules for student rosters.</p>
+
+                  <div className="settings-form-group" style={{ marginBottom: 0 }}>
+                    <label className="settings-form-label">GitHub Metadata Sync Interval</label>
+                    <select 
+                      className="settings-select"
+                      value={settings.github_sync_interval}
+                      onChange={(e) => handleSettingChange('github_sync_interval', e.target.value)}
+                    >
+                      <option value="every_6_hours">Every 6 Hours</option>
+                      <option value="every_12_hours">Every 12 Hours</option>
+                      <option value="daily">Daily</option>
+                    </select>
+                  </div>
+                </div>
+
               </div>
-              <div style={{ padding: '1.5rem', background: '#f8f9fa', borderRadius: '10px' }}>
-                <h3 style={{ margin: '0 0 1rem 0' }}>System Maintenance</h3>
-                <button onClick={handleMaintenanceMode} style={{ padding: '0.75rem 1.5rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Enable Maintenance Mode</button>
-              </div>
-              <div style={{ padding: '1.5rem', background: '#f8f9fa', borderRadius: '10px' }}>
-                <h3 style={{ margin: '0 0 1rem 0' }}>Database Backup</h3>
-                <button onClick={handleBackup} style={{ padding: '0.75rem 1.5rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Create Backup Now</button>
+
+              {/* COLUMN 2 */}
+              <div className="settings-column">
+                
+                {/* Card 3: Danger Zone */}
+                <div className="settings-card danger-zone">
+                  <h3 className="settings-card-title">Danger Zone Utilities</h3>
+                  <p className="settings-card-subtitle">Critical system operations</p>
+                  
+                  <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                    <div className="setting-label-group" style={{ marginBottom: '1.25rem' }}>
+                      <h4 className="setting-label">Manual Database Backup</h4>
+                      <p className="setting-description">Fires an immediate, synchronous request to snapshot all current PostgreSQL table architectures and data rows.</p>
+                    </div>
+                    
+                    <button onClick={handleBackup} className="backup-btn">
+                      Create Backup Now
+                    </button>
+                    {settings.last_backup_time && (
+                      <span className="backup-timestamp">
+                        Last Backup Run: {new Date(settings.last_backup_time).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
