@@ -139,6 +139,21 @@ const AdminDashboard = () => {
     setStudents([...students, newStudent]);
   };
 
+  const handleEditStudent = (id) => {
+    const student = students.find(s => s.id === id);
+    if (!student) return;
+    
+    const newName = window.prompt("Edit student name:", student.name);
+    if (newName === null) return; // user cancelled
+    
+    const newRoll = window.prompt("Edit roll number:", student.roll_number);
+    if (newRoll === null) return; // user cancelled
+    
+    setStudents(students.map(s => 
+      s.id === id ? { ...s, name: newName || s.name, roll_number: newRoll || s.roll_number } : s
+    ));
+  };
+
   const deleteTeam = async (id) => {
     if (window.confirm('Are you sure you want to delete this team?')) {
       try {
@@ -573,7 +588,10 @@ const AdminDashboard = () => {
                         {student.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <td style={{ padding: '1rem', textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                      <button onClick={() => handleEditStudent(student.id)} style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                        Edit
+                      </button>
                       <button onClick={() => toggleUserStatus(student.id, student.is_active)} style={{ padding: '0.5rem 1rem', background: student.is_active ? '#e74c3c' : '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
                         {student.is_active ? 'Deactivate' : 'Activate'}
                       </button>
