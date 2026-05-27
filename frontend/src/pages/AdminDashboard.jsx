@@ -17,6 +17,14 @@ const AdminDashboard = () => {
   
   // Student Form State
   const [studentFormMode, setStudentFormMode] = useState('view'); // 'view', 'add', 'edit'
+  
+  // Faculty Form State
+  const [facultyFormMode, setFacultyFormMode] = useState('view');
+  const [selectedFacultyId, setSelectedFacultyId] = useState(null);
+  const [facultyFormData, setFacultyFormData] = useState({
+    name: '', roll_number: '', email: '', password: '', 
+    branch: 'Computer Science', designation: 'Assistant Professor'
+  });
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [studentFormData, setStudentFormData] = useState({
     name: '', roll_number: '', email: '', password: '', 
@@ -224,6 +232,117 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error(err);
       alert('An error occurred during submission.');
+    }
+  };
+
+  const openFacultyAddMode = () => {
+    setFacultyFormData({
+      name: '', roll_number: '', email: '', password: '', 
+      branch: 'Computer Science', designation: 'Assistant Professor'
+    });
+    setFormErrors({});
+    setSelectedFacultyId(null);
+    setFacultyFormMode('add');
+  };
+
+  const openFacultyEditMode = (member) => {
+    setFacultyFormData({
+      name: member?.name || '',
+      roll_number: member?.roll_number || '',
+      email: member?.email || '',
+      password: '',
+      branch: member?.branch || 'Computer Science',
+      designation: member?.designation || 'Assistant Professor'
+    });
+    setFormErrors({});
+    setSelectedFacultyId(member?.id);
+    setFacultyFormMode('edit');
+  };
+
+  const handleCloseFacultyForm = () => {
+    setFacultyFormMode('view');
+  };
+
+  const handleFacultyFormChange = (e) => {
+    const { name, value } = e.target;
+    setFacultyFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleFacultyFormSubmit = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!facultyFormData.name) errors.name = 'Name is required';
+    if (!facultyFormData.roll_number) errors.roll_number = 'Employee ID is required';
+    if (!facultyFormData.email || !facultyFormData.email.includes('@')) errors.email = 'Valid email is required';
+    if (facultyFormMode === 'add' && !facultyFormData.password) errors.password = 'Password is required for new faculty';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    try {
+      const url = facultyFormMode === 'add' 
+        ? import.meta.env.VITE_API_URL + '/api/v1/admin/faculty'
+        : import.meta.env.VITE_API_URL + `/api/v1/admin/faculty/${selectedFacultyId}`;
+        
+      const method = facultyFormMode === 'add' ? 'POST' : 'PUT';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(facultyFormData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedFaculty = data.faculty || data.user || {
+          id: facultyFormMode === 'add' ? Date.now() : selectedFacultyId,
+          ...facultyFormData,
+          is_active: true
+        };
+        
+        if (facultyFormMode === 'add') {
+          setFaculty([...faculty, updatedFaculty]);
+        } else {
+          setFaculty(faculty.map(f => f.id === selectedFacultyId ? { ...f, ...updatedFaculty } : f));
+        }
+        showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully.`, 'success');
+        handleCloseFacultyForm();
+      } else {
+        const updatedFaculty = {
+          id: facultyFormMode === 'add' ? Date.now() : selectedFacultyId,
+          ...facultyFormData,
+          is_active: true
+        };
+        if (facultyFormMode === 'add') {
+          setFaculty([...faculty, updatedFaculty]);
+        } else {
+          setFaculty(faculty.map(f => f.id === selectedFacultyId ? { ...updatedFaculty, is_active: f.is_active } : f));
+        }
+        showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully (Mock).`, 'success');
+        handleCloseFacultyForm();
+      }
+    } catch (err) {
+      console.error(err);
+      const updatedFaculty = {
+        id: facultyFormMode === 'add' ? Date.now() : selectedFacultyId,
+        ...facultyFormData,
+        is_active: true
+      };
+      if (facultyFormMode === 'add') {
+        setFaculty([...faculty, updatedFaculty]);
+      } else {
+        setFaculty(faculty.map(f => f.id === selectedFacultyId ? { ...updatedFaculty, is_active: f.is_active } : f));
+      }
+      showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully (Mock).`, 'success');
+      handleCloseFacultyForm();
     }
   };
 
@@ -775,41 +894,109 @@ const AdminDashboard = () => {
 
         {/* Faculty Section */}
         {activeSection === 'faculty' && (
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h2 style={{ margin: 0, color: '#2c3e50' }}>Faculty Management</h2>
-              <button style={{ padding: '0.75rem 1.5rem', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Add New Faculty</button>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Employee ID</th>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Name</th>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Department</th>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Designation</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {faculty.map(member => (
-                  <tr key={member.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                    <td style={{ padding: '1rem' }}>{member.roll_number}</td>
-                    <td style={{ padding: '1rem' }}>{member.name}</td>
-                    <td style={{ padding: '1rem' }}>{member.branch || 'N/A'}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ background: member.is_active ? '#27ae60' : '#e74c3c', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem' }}>
-                        {member.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <button onClick={() => toggleUserStatus(member.id, member.is_active)} style={{ padding: '0.5rem 1rem', background: member.is_active ? '#e74c3c' : '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-                        {member.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                    </td>
+          <div className="students-split-layout">
+            <div className={`student-table-container ${facultyFormMode !== 'view' ? 'split-width' : 'full-width'}`}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ margin: 0, color: '#2c3e50' }}>Faculty Management</h2>
+                <button onClick={openFacultyAddMode} style={{ padding: '0.75rem 1.5rem', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Add New Faculty</button>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Employee ID</th>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Name</th>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Department</th>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Designation</th>
+                    <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
+                    <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {faculty.map(member => (
+                    <tr key={member.id} style={{ borderBottom: '1px solid #dee2e6' }}>
+                      <td style={{ padding: '1rem' }}>{member.roll_number}</td>
+                      <td style={{ padding: '1rem' }}>{member.name}</td>
+                      <td style={{ padding: '1rem' }}>{member.branch || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>{member.designation || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ background: member.is_active ? '#27ae60' : '#e74c3c', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem' }}>
+                          {member.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <button onClick={() => openFacultyEditMode(member)} style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                          Edit
+                        </button>
+                        <button onClick={() => toggleUserStatus(member.id, member.is_active)} style={{ padding: '0.5rem 1rem', background: member.is_active ? '#e74c3c' : '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                          {member.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Inline Faculty Form Side Panel */}
+            {facultyFormMode !== 'view' && (
+              <div className="student-side-panel">
+                <h3>{facultyFormMode === 'add' ? 'Add New Faculty' : 'Edit Faculty'}</h3>
+                <form onSubmit={handleFacultyFormSubmit}>
+                  <div className="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" name="name" value={facultyFormData.name || ''} onChange={handleFacultyFormChange} className="glass-input" placeholder="e.g. Amit Gupta" />
+                    {formErrors.name && <span className="error-text">{formErrors.name}</span>}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Employee ID *</label>
+                    <input type="text" name="roll_number" value={facultyFormData.roll_number || ''} onChange={handleFacultyFormChange} className="glass-input" placeholder="e.g. 234555000" />
+                    {formErrors.roll_number && <span className="error-text">{formErrors.roll_number}</span>}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Institutional Email *</label>
+                    <input type="email" name="email" value={facultyFormData.email || ''} onChange={handleFacultyFormChange} className="glass-input" placeholder="e.g. faculty@gehu.ac.in" />
+                    {formErrors.email && <span className="error-text">{formErrors.email}</span>}
+                  </div>
+                  
+                  {facultyFormMode === 'add' && (
+                    <div className="form-group">
+                      <label>Password *</label>
+                      <input type="password" name="password" value={facultyFormData.password} onChange={handleFacultyFormChange} className="glass-input" placeholder="Min 6 characters" />
+                      {formErrors.password && <span className="error-text">{formErrors.password}</span>}
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Department</label>
+                    <select name="branch" value={facultyFormData.branch} onChange={handleFacultyFormChange} className="glass-input">
+                      <option value="Computer Science">Computer Science</option>
+                      <option value="Mechanical Engineering">Mechanical Engineering</option>
+                      <option value="Civil Engineering">Civil Engineering</option>
+                      <option value="Electronics">Electronics</option>
+                      <option value="BCA">BCA</option>
+                    </select>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Designation</label>
+                    <select name="designation" value={facultyFormData.designation} onChange={handleFacultyFormChange} className="glass-input">
+                      <option value="Professor">Professor</option>
+                      <option value="Associate Professor">Associate Professor</option>
+                      <option value="Assistant Professor">Assistant Professor</option>
+                      <option value="Lecturer">Lecturer</option>
+                      <option value="HOD">Head of Department</option>
+                    </select>
+                  </div>
+
+                  <div className="panel-actions">
+                    <button type="button" onClick={handleCloseFacultyForm} className="btn-secondary">Cancel</button>
+                    <button type="submit" className="btn-primary">{facultyFormMode === 'add' ? 'Create Faculty' : 'Save Changes'}</button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )}
 
