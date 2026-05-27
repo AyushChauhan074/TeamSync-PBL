@@ -161,19 +161,20 @@ const AdminDashboard = () => {
   };
 
   const openEditMode = (student) => {
+    console.log("Opening edit mode for:", student);
     setStudentFormData({
-      name: student.name || '',
-      roll_number: student.roll_number || '',
-      email: student.email || '',
+      name: student?.name || '',
+      roll_number: student?.roll_number || '',
+      email: student?.email || '',
       password: '', // never prefill password
-      branch: student.branch || 'Computer Science',
-      year: student.year?.toString() || '1',
-      section: student.section || '',
-      github_username: student.github_username || '',
-      skills: Array.isArray(student.skills) ? student.skills.join(', ') : (student.skills || '')
+      branch: student?.branch || 'Computer Science',
+      year: student?.year ? student.year.toString() : '1',
+      section: student?.section || '',
+      github_username: student?.github_username || '',
+      skills: Array.isArray(student?.skills) ? student.skills.join(', ') : (student?.skills || '')
     });
     setFormErrors({});
-    setSelectedStudentId(student.id);
+    setSelectedStudentId(student?.id);
     setStudentFormMode('edit');
   };
 
@@ -701,19 +702,19 @@ const AdminDashboard = () => {
                 <form onSubmit={handleStudentFormSubmit}>
                   <div className="form-group">
                     <label>Full Name *</label>
-                    <input type="text" name="name" value={studentFormData.name} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. John Doe" />
+                    <input type="text" name="name" value={studentFormData.name || ''} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. John Doe" />
                     {formErrors.name && <span className="error-text">{formErrors.name}</span>}
                   </div>
                   
                   <div className="form-group">
                     <label>GEHU Roll Number *</label>
-                    <input type="text" name="roll_number" value={studentFormData.roll_number} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. 230111000" />
+                    <input type="text" name="roll_number" value={studentFormData.roll_number || ''} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. 230111000" />
                     {formErrors.roll_number && <span className="error-text">{formErrors.roll_number}</span>}
                   </div>
                   
                   <div className="form-group">
                     <label>University Email *</label>
-                    <input type="email" name="email" value={studentFormData.email} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. student@gehu.ac.in" />
+                    <input type="email" name="email" value={studentFormData.email || ''} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. student@gehu.ac.in" />
                     {formErrors.email && <span className="error-text">{formErrors.email}</span>}
                   </div>
                   
