@@ -167,11 +167,11 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + \`/api/v1/admin/teams/\${selectedTeamId}/allocate\`, {
+      const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/teams/${selectedTeamId}/allocate`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \`Bearer \${user?.token || ''}\`
+          'Authorization': `Bearer ${user?.token || ''}`
         },
         body: JSON.stringify({
           mentorId: teamFormData.mentor_id,
@@ -196,7 +196,7 @@ const AdminDashboard = () => {
           return t;
         }));
         
-        showToast(\`Team assigned successfully: Mentor \${mentor?.name} & Evaluator \${evaluator?.name} linked.\`, 'success');
+        showToast(`Team assigned successfully: Mentor ${mentor?.name} & Evaluator ${evaluator?.name} linked.`, 'success');
         handleCloseTeamForm();
       } else {
         const errorData = await response.json();
@@ -220,7 +220,7 @@ const AdminDashboard = () => {
         return t;
       }));
       
-      showToast(\`Team assigned successfully: Mentor \${mentor?.name} & Evaluator \${evaluator?.name} linked. (Mock)\`, 'success');
+      showToast(`Team assigned successfully: Mentor ${mentor?.name} & Evaluator ${evaluator?.name} linked. (Mock)`, 'success');
       handleCloseTeamForm();
     }
   };
