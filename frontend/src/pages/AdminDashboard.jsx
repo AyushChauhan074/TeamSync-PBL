@@ -23,6 +23,7 @@ const AdminDashboard = () => {
     branch: 'Computer Science', year: '1', section: '', github_username: '', skills: ''
   });
   const [formErrors, setFormErrors] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success', isFading: false });
 
   const navigate = useNavigate();
 
@@ -100,33 +101,52 @@ const AdminDashboard = () => {
     }
   }, [navigate]);
 
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type, isFading: false });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, isFading: true }));
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: 'success', isFading: false });
+      }, 400); // Matches CSS animation time
+    }, 3000);
+  };
+
   const toggleUserStatus = async (id, currentStatus) => {
-    if (window.confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this user?`)) {
-      try {
-        const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/users/${id}/status`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user.token}`
-          },
-          body: JSON.stringify({ isActive: !currentStatus })
-        });
-        
-        if (response.ok) {
-          const { user: updatedUser } = await response.json();
-          setStudents(students.map(s => s.id === id ? { ...s, is_active: updatedUser.is_active } : s));
-          setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: updatedUser.is_active } : f));
-        } else {
-          // Mock mode fallback: toggle the state locally anyway so the UI works
-          setStudents(students.map(s => s.id === id ? { ...s, is_active: !currentStatus } : s));
-          setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: !currentStatus } : f));
-        }
-      } catch (error) {
-        console.error("Error updating user status", error);
-        // Mock mode fallback
+    // Identify user name for toast
+    let userName = 'User';
+    const student = students.find(s => s.id === id);
+    if (student) userName = student.name;
+    else {
+      const fac = faculty.find(f => f.id === id);
+      if (fac) userName = fac.name;
+    }
+
+    try {
+      const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/users/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ isActive: !currentStatus })
+      });
+      
+      if (response.ok) {
+        const { user: updatedUser } = await response.json();
+        setStudents(students.map(s => s.id === id ? { ...s, is_active: updatedUser.is_active } : s));
+        setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: updatedUser.is_active } : f));
+      } else {
+        // Mock mode fallback: toggle the state locally anyway so the UI works
         setStudents(students.map(s => s.id === id ? { ...s, is_active: !currentStatus } : s));
         setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: !currentStatus } : f));
       }
+      showToast(`${userName} is now ${currentStatus ? 'inactive' : 'active'}.`, 'success');
+    } catch (error) {
+      console.error("Error updating user status", error);
+      // Mock mode fallback
+      setStudents(students.map(s => s.id === id ? { ...s, is_active: !currentStatus } : s));
+      setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: !currentStatus } : f));
+      showToast(`${userName} is now ${currentStatus ? 'inactive' : 'active'}.`, 'success');
     }
   };
 
@@ -263,6 +283,25 @@ const AdminDashboard = () => {
 
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh' }}>
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`admin-toast ${toast.type} ${toast.isFading ? 'fade-out' : ''}`}>
+          {toast.type === 'success' ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#27ae60" strokeWidth="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       {/* Top Header */}
       <div style={{
         background: 'linear-gradient(135deg, #f0f9f0ff 0%, #f0f9f0ff 100%)',
