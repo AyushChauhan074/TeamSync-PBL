@@ -133,6 +133,20 @@ io.on('connection', (socket) => {
   });
 });
 
+// Auto-migrate schema on boot
+(async () => {
+  try {
+    await pool.query(`
+      ALTER TABLE projects 
+      ADD COLUMN IF NOT EXISTS mentor_id INTEGER REFERENCES users(id),
+      ADD COLUMN IF NOT EXISTS evaluator_id INTEGER REFERENCES users(id);
+    `);
+    console.log('Database auto-migration complete: mentor_id and evaluator_id ready.');
+  } catch (err) {
+    console.error('Database auto-migration failed:', err);
+  }
+})();
+
 server.listen(PORT, () => {
   console.log(`Server and WebSockets running on port ${PORT}`);
 });
