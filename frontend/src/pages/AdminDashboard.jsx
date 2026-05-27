@@ -25,7 +25,12 @@ const AdminDashboard = () => {
         const mockStudents = [
           { id: 1, name: 'Abhishek Giri', roll_number: '230111589', branch: 'Computer Science', year: 3, is_active: true },
           { id: 2, name: 'Deepali Chauhan', roll_number: '230111588', branch: 'Computer Science', year: 3, is_active: true },
-          { id: 3, name: 'Sidh Khurana', roll_number: '230111587', branch: 'Computer Science', year: 3, is_active: false }
+          { id: 3, name: 'Sidh Khurana', roll_number: '230111587', branch: 'Computer Science', year: 3, is_active: false },
+          { id: 4, name: 'Ayush Chauhan', roll_number: '230111586', branch: 'Computer Science', year: 3, is_active: true },
+          { id: 5, name: 'Abhay Kanojia', roll_number: '230111585', branch: 'Computer Science', year: 3, is_active: true },
+          { id: 6, name: 'Harsh Rawat', roll_number: '230111584', branch: 'Computer Science', year: 3, is_active: true },
+          { id: 7, name: 'Ayush Chamoli', roll_number: '230111583', branch: 'Computer Science', year: 3, is_active: true },
+          { id: 8, name: 'Ayush Bhatt', roll_number: '230111582', branch: 'Computer Science', year: 3, is_active: true }
         ];
         
         const mockFaculty = [
