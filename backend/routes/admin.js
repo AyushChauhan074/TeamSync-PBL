@@ -16,7 +16,7 @@ module.exports = (pool) => {
         queryParams.push(role);
       }
       
-      query += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+      query += ` ORDER BY roll_number ASC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
       queryParams.push(limit, offset);
       
       const result = await pool.query(query, queryParams);
