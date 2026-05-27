@@ -107,7 +107,7 @@ const AdminDashboard = () => {
       const parsedUser = JSON.parse(userData);
       if (parsedUser.role === 'admin') {
         setUser(parsedUser);
-        fetchAdminData(parsedUser.token);
+        fetchAdminData(localStorage.getItem('token'));
       } else {
         navigate('/login');
       }
@@ -171,7 +171,7 @@ const AdminDashboard = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token || ''}`
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
         },
         body: JSON.stringify({
           mentorId: teamFormData.mentor_id,
@@ -240,7 +240,7 @@ const AdminDashboard = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ isActive: !currentStatus })
       });
@@ -401,7 +401,7 @@ const AdminDashboard = () => {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(facultyFormData)
       });
@@ -457,7 +457,7 @@ const AdminDashboard = () => {
       try {
         const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/teams/${id}`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${user.token}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
         if (response.ok) {
@@ -486,7 +486,7 @@ const AdminDashboard = () => {
       const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/backup', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user.token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       if (response.ok) {
