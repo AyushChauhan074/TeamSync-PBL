@@ -161,8 +161,9 @@ const AdminDashboard = () => {
             src={gehuLogo} 
             alt="TeamSync PBL" 
             style={{
-              height: '50px',
-              width: 'auto'
+              height: '80px',
+              width: 'auto',
+              marginLeft: '1rem'
             }}
           />
           <button

@@ -46,7 +46,7 @@ const Navbar = () => {
             src={gehuLogo} 
             alt="TeamSync PBL" 
             style={{
-              height: '50px',
+              height: '80px',
               width: 'auto'
             }}
           />
