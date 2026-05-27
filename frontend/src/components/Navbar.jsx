@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import gehuLogo from '../assets/GEHU_LOGO.png';
 
 const Navbar = () => {
   const [user, setUser] = useState(null);
@@ -42,7 +43,7 @@ const Navbar = () => {
           justifyContent: 'space-between'
         }}>
           <img 
-            src="/assets/HeaderLogo.png" 
+            src={gehuLogo} 
             alt="TeamSync PBL" 
             style={{
               height: '50px',

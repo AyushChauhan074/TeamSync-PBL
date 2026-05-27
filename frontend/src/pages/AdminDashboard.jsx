@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import gehuLogo from '../assets/GEHU_LOGO.png';
 import './AdminDashboard.css';
 
 const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -157,7 +158,7 @@ const AdminDashboard = () => {
           justifyContent: 'space-between'
         }}>
           <img 
-            src="/assets/HeaderLogo.png" 
+            src={gehuLogo} 
             alt="TeamSync PBL" 
             style={{
               height: '50px',
