@@ -146,12 +146,32 @@ io.on('connection', (socket) => {
 // Auto-migrate schema on boot
 (async () => {
   try {
+    // Add mentor/evaluator to projects
     await pool.query(`
       ALTER TABLE projects 
       ADD COLUMN IF NOT EXISTS mentor_id INTEGER REFERENCES users(id),
       ADD COLUMN IF NOT EXISTS evaluator_id INTEGER REFERENCES users(id);
     `);
-    console.log('Database auto-migration complete: mentor_id and evaluator_id ready.');
+
+    // Add designation column for faculty
+    await pool.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS designation VARCHAR(100);
+    `);
+
+    // Add section column for students
+    await pool.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS section VARCHAR(10);
+    `);
+
+    // Backfill designation from bio for existing faculty who have no designation yet
+    await pool.query(`
+      UPDATE users SET designation = 'Professor' 
+      WHERE role = 'faculty' AND designation IS NULL;
+    `);
+
+    console.log('Database auto-migration complete.');
   } catch (err) {
     console.error('Database auto-migration failed:', err);
   }

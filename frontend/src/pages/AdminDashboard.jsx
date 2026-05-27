@@ -49,27 +49,6 @@ const AdminDashboard = () => {
         setLoading(true);
         const headers = { 'Authorization': `Bearer ${token}` };
         
-        const mockStudents = [
-          { id: 1, name: 'Abhishek Giri', roll_number: '230111589', branch: 'Computer Science', year: 3, is_active: true },
-          { id: 2, name: 'Deepali Chauhan', roll_number: '230111588', branch: 'Computer Science', year: 3, is_active: true },
-          { id: 3, name: 'Sidh Khurana', roll_number: '230111587', branch: 'Computer Science', year: 3, is_active: false },
-          { id: 4, name: 'Ayush Chauhan', roll_number: '230111586', branch: 'Computer Science', year: 3, is_active: true },
-          { id: 5, name: 'Abhay Kanojia', roll_number: '230111585', branch: 'Computer Science', year: 3, is_active: true },
-          { id: 6, name: 'Harsh Rawat', roll_number: '230111584', branch: 'Computer Science', year: 3, is_active: true },
-          { id: 7, name: 'Ayush Chamoli', roll_number: '230111583', branch: 'Computer Science', year: 3, is_active: true },
-          { id: 8, name: 'Ayush Bhatt', roll_number: '230111582', branch: 'Computer Science', year: 3, is_active: true }
-        ];
-        
-        const mockFaculty = [
-          { id: 10, name: 'Sushant Chamoli', roll_number: '234555999', branch: 'Computer Science', is_active: true },
-          { id: 11, name: 'Amit Gupta', roll_number: '234555998', branch: 'Computer Science', is_active: true }
-        ];
-        
-        const mockTeams = [
-          { id: 1, name: 'AI Research Team', current_members: 4, max_members: 6, status: 'active' },
-          { id: 2, name: 'Web Development Squad', current_members: 3, max_members: 5, status: 'forming' }
-        ];
-
         const [studentsRes, facultyRes, teamsRes] = await Promise.all([
           fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=student', { headers }),
           fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=faculty', { headers }),
@@ -78,23 +57,26 @@ const AdminDashboard = () => {
 
         if (studentsRes.ok) {
           const data = await studentsRes.json();
-          setStudents((data.users && data.users.length > 0) ? data.users : mockStudents);
+          setStudents(data.users || []);
         } else {
-          setStudents(mockStudents);
+          console.error('Failed to fetch students:', studentsRes.status);
+          setStudents([]);
         }
         
         if (facultyRes.ok) {
           const data = await facultyRes.json();
-          setFaculty((data.users && data.users.length > 0) ? data.users : mockFaculty);
+          setFaculty(data.users || []);
         } else {
-          setFaculty(mockFaculty);
+          console.error('Failed to fetch faculty:', facultyRes.status);
+          setFaculty([]);
         }
         
         if (teamsRes.ok) {
           const data = await teamsRes.json();
-          setTeams((data.teams && data.teams.length > 0) ? data.teams : mockTeams);
+          setTeams(data.teams || []);
         } else {
-          setTeams(mockTeams);
+          console.error('Failed to fetch teams:', teamsRes.status);
+          setTeams([]);
         }
       } catch (error) {
         console.error('Failed to fetch admin data', error);
@@ -299,9 +281,41 @@ const AdminDashboard = () => {
     }
 
     try {
-      // Mock Add removed to prevent fake persistence
-      showToast('Student management API endpoint not yet implemented', 'error');
-      handleCloseForm();
+      const url = studentFormMode === 'add' 
+        ? import.meta.env.VITE_API_URL + '/api/v1/admin/students'
+        : import.meta.env.VITE_API_URL + `/api/v1/admin/students/${selectedStudentId}`;
+        
+      const method = studentFormMode === 'add' ? 'POST' : 'PUT';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(studentFormData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedStudent = data.user || {
+          id: studentFormMode === 'add' ? Date.now() : selectedStudentId,
+          ...studentFormData,
+          year: parseInt(studentFormData.year),
+          is_active: true
+        };
+        
+        if (studentFormMode === 'add') {
+          setStudents([...students, updatedStudent]);
+        } else {
+          setStudents(students.map(s => s.id === selectedStudentId ? { ...s, ...updatedStudent } : s));
+        }
+        showToast(`Student ${studentFormData.name} ${studentFormMode === 'add' ? 'created' : 'updated'} successfully.`, 'success');
+        handleCloseForm();
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || `Failed to ${studentFormMode === 'add' ? 'create' : 'update'} student`, 'error');
+      }
     } catch (err) {
       console.error(err);
       showToast('Network error: Failed to update database', 'error');
