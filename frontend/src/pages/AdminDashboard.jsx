@@ -3,6 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import gehuLogo from '../assets/GEHU_LOGO.png';
 import './AdminDashboard.css';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+const activityData = [
+  { name: 'Week 1', commits: 120, prs: 15 },
+  { name: 'Week 2', commits: 180, prs: 22 },
+  { name: 'Week 3', commits: 250, prs: 35 },
+  { name: 'Week 4', commits: 310, prs: 48 },
+];
+
+const projectDistData = [
+  { name: 'Web Dev', count: 45, fill: '#3498db' },
+  { name: 'AI/ML', count: 32, fill: '#9b59b6' },
+  { name: 'Mobile App', count: 25, fill: '#2ecc71' },
+  { name: 'Data Sci', count: 18, fill: '#f1c40f' },
+  { name: 'Cyber Sec', count: 12, fill: '#e74c3c' },
+];
 
 const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -1205,7 +1221,9 @@ const AdminDashboard = () => {
         {activeSection === 'analytics' && (
           <div style={{ background: 'white', padding: '2rem', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h2 style={{ marginBottom: '2rem', color: '#2c3e50' }}>System Analytics</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            
+            {/* Summary Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
               <div>
                 <h3 style={{ marginBottom: '1rem' }}>User Growth</h3>
                 <div style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '10px', textAlign: 'center' }}>
@@ -1222,6 +1240,59 @@ const AdminDashboard = () => {
                   <div style={{ color: '#666' }}>In Progress</div>
                 </div>
               </div>
+            </div>
+
+            {/* Premium Visualizations */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              
+              {/* Activity Area Chart */}
+              <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '12px', border: '1px solid #dee2e6' }}>
+                <h3 style={{ marginBottom: '1.5rem', color: '#2c3e50' }}>Weekly Commit & PR Volume</h3>
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
+                    <AreaChart data={activityData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorCommits" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3498db" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#3498db" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorPrs" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#20c997" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#20c997" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="name" stroke="#7f8c8d" />
+                      <YAxis stroke="#7f8c8d" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ecf0f1" />
+                      <RechartsTooltip 
+                        contentStyle={{ background: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                      />
+                      <Area type="monotone" dataKey="commits" stroke="#3498db" fillOpacity={1} fill="url(#colorCommits)" name="Commits" />
+                      <Area type="monotone" dataKey="prs" stroke="#20c997" fillOpacity={1} fill="url(#colorPrs)" name="Pull Requests" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Project Distribution Horizontal Bar Chart */}
+              <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '12px', border: '1px solid #dee2e6' }}>
+                <h3 style={{ marginBottom: '1.5rem', color: '#2c3e50' }}>Projects by Department</h3>
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={projectDistData} layout="vertical" margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
+                      <XAxis type="number" stroke="#7f8c8d" />
+                      <YAxis dataKey="name" type="category" stroke="#7f8c8d" width={80} />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#ecf0f1" />
+                      <RechartsTooltip 
+                        cursor={{ fill: 'rgba(0,0,0,0.05)' }} 
+                        contentStyle={{ background: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Active Projects" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
