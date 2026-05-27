@@ -8,7 +8,7 @@ module.exports = (pool) => {
       const { role, page = 1, limit = 50 } = req.query;
       const offset = (page - 1) * limit;
       
-      let query = 'SELECT id, roll_number, name, email, role, branch, year, designation, is_active FROM users';
+      let query = 'SELECT id, roll_number, name, email, role, branch, year, bio AS designation, is_active FROM users';
       const queryParams = [];
       
       if (role) {
@@ -40,9 +40,9 @@ module.exports = (pool) => {
       const passwordHash = await bcrypt.hash(password, 10);
 
       const insertQuery = `
-        INSERT INTO users (roll_number, name, email, password_hash, role, branch, designation, is_active)
+        INSERT INTO users (roll_number, name, email, password_hash, role, branch, bio, is_active)
         VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-        RETURNING id, roll_number, name, email, role, branch, designation, is_active
+        RETURNING id, roll_number, name, email, role, branch, bio AS designation, is_active
       `;
       const result = await pool.query(insertQuery, [
         roll_number,
@@ -72,9 +72,9 @@ module.exports = (pool) => {
       
       const updateQuery = `
         UPDATE users 
-        SET name = $1, roll_number = $2, email = $3, branch = $4, designation = $5, updated_at = CURRENT_TIMESTAMP
+        SET name = $1, roll_number = $2, email = $3, branch = $4, bio = $5, updated_at = CURRENT_TIMESTAMP
         WHERE id = $6 AND role = 'faculty'
-        RETURNING id, roll_number, name, email, role, branch, designation, is_active
+        RETURNING id, roll_number, name, email, role, branch, bio AS designation, is_active
       `;
       
       const result = await pool.query(updateQuery, [
