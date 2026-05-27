@@ -591,9 +591,23 @@
   border-radius: 8px;
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
-  color: #111827;
+  color: #111827 !important;
   transition: all 0.2s ease;
   font-family: inherit;
+}
+
+.glass-input::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+.glass-input:-webkit-autofill,
+.glass-input:-webkit-autofill:hover, 
+.glass-input:-webkit-autofill:focus, 
+.glass-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .glass-input:focus {
