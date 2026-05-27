@@ -40,7 +40,6 @@ const Teams = () => {
   const [chatMessage, setChatMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [showFilePreview, setShowFilePreview] = useState(false);
-  const [showFilePreview, setShowFilePreview] = useState(false);
   const [messages, setMessages] = useState([]);
   const socketRef = useRef(null);
 
