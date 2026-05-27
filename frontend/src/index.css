@@ -1,10 +1,31 @@
-body {
+html, body {
   margin: 0;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Prevent horizontal leaking from absolute elements */
+  overflow-x: hidden;
+  
+  /* Kill mobile elastic overscroll/bounce effect globally */
+  overscroll-behavior: none;
+  
+  /* Lock width strictly to the viewport (100% prevents scrollbar width bugs) */
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+#root {
+  /* Lock the React mounting root as well */
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+  overscroll-behavior: none;
 }
 
 code {

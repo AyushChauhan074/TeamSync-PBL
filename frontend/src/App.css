@@ -262,3 +262,30 @@ body {
     padding: 1rem;
   }
 }
+
+/* --- Viewport Fixes & Layout Constraints --- */
+
+/* Add a utility wrapper for absolute backgrounds so they never stretch the document */
+.viewport-constrained-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none; /* Let clicks pass through to the UI */
+}
+
+/* Isolate the whiteboard from viewport gestures */
+canvas#whiteboard {
+  /* CRITICAL: Prevents touch from scrolling or zooming the page when drawing */
+  touch-action: none; 
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* For any scrollable sidebars/chat windows to prevent scroll chaining to the body */
+.scrollable-sidebar, .chat-container {
+  overscroll-behavior: contain;
+}

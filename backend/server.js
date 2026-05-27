@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { Pool } = require('pg');
 require('dotenv').config();
-const { authMiddleware } = require('./middleware/auth');
+const { authMiddleware, adminOnly } = require('./middleware/auth');
 const jwt = require('jsonwebtoken');
 
 const app = express();
@@ -37,11 +37,8 @@ if (process.env.DATABASE_URL) {
     }
   });
 } else {
-  console.log('⚠️ DATABASE_URL not found. Using a mock database pool for Phase 1 testing.');
-  pool = {
-    query: async () => ({ rows: [] }),
-    connect: async () => ({ release: () => {} })
-  };
+  console.error('❌ CRITICAL ERROR: DATABASE_URL not found. Refusing to start with mock database in production.');
+  process.exit(1);
 }
 
 // Middleware
@@ -57,6 +54,7 @@ const userRoutes = require('./routes/users')(pool);
 const teamRoutes = require('./routes/teams')(pool);
 const projectRoutes = require('./routes/projects')(pool);
 const messageRoutes = require('./routes/messages')(pool);
+const adminRoutes = require('./routes/admin')(pool);
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -64,6 +62,7 @@ app.use('/api/v1/users', authMiddleware, userRoutes);
 app.use('/api/v1/teams', authMiddleware, teamRoutes);
 app.use('/api/v1/projects', authMiddleware, projectRoutes);
 app.use('/api/v1/messages', authMiddleware, messageRoutes);
+app.use('/api/v1/admin', authMiddleware, adminOnly, adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -83,6 +82,14 @@ app.use((err, req, res, next) => {
 // Socket.IO Connection Handler
 io.on('connection', (socket) => {
   console.log(`User connected to socket: ${socket.id}`);
+
+  // Admin Maintenance Toggle
+  socket.on('triggerMaintenance', (data) => {
+    if (data && data.role === 'admin') {
+      console.log('Admin triggered maintenance mode.');
+      io.emit('maintenanceMode', { active: true, message: 'System entering read-only mode for maintenance.' });
+    }
+  });
 
   // Join a specific team chat room
   socket.on('joinTeamRoom', (teamId) => {

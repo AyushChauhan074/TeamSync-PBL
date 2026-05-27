@@ -1,12 +1,24 @@
 /* Login.css */
 .login-container {
-  min-height: 100vh;
+  /* Bulletproof Viewport Lock */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), 
               url('../assets/Gehu.jpg') center/cover no-repeat;
+  background-attachment: fixed;
   padding: 2rem;
+  
+  /* Prevent pulling/overscroll on the login container itself */
+  overscroll-behavior: none;
 }
 
 .login-content {

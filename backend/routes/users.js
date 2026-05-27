@@ -6,8 +6,17 @@ module.exports = (pool) => {
 // Get all users (public info)
 router.get('/', async (req, res) => {
   try {
-    const query = 'SELECT id, roll_number, name, branch, year, github_username, bio, skills, interests FROM users WHERE is_active = true';
-    const result = await pool.query(query);
+    const { page = 1, limit = 50 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const query = `
+      SELECT id, roll_number, name, branch, year, github_username, bio, skills, interests 
+      FROM users 
+      WHERE is_active = true 
+      ORDER BY id 
+      LIMIT $1 OFFSET $2
+    `;
+    const result = await pool.query(query, [limit, offset]);
     res.json({ users: result.rows });
   } catch (error) {
     console.error('Get all users error:', error);

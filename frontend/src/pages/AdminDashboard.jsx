@@ -1,44 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import './AdminDashboard.css';
+
+const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const AdminDashboard = () => {
   const [user, setUser] = useState(null);
   const [activeSection, setActiveSection] = useState('overview');
   const [isHovered, setIsHovered] = useState(false);
-  const [students, setStudents] = useState([
-    { id: 1, name: 'Abhishek Giri', rollNumber: '230111589', branch: 'CSE', year: '3rd', status: 'Active', email: '230111589@gehu.ac.in', cgpa: '8.7' },
-    { id: 2, name: 'Deepali Chauhan', rollNumber: '230111588', branch: 'CSE', year: '3rd', status: 'Active', email: '230111588@gehu.ac.in', cgpa: '8.9' },
-    { id: 3, name: 'Sidh Khurana', rollNumber: '230111587', branch: 'CSE', year: '3rd', status: 'Active', email: '230111587@gehu.ac.in', cgpa: '8.5' },
-    { id: 4, name: 'Ayush Chauhan', rollNumber: '230111586', branch: 'CSE', year: '3rd', status: 'Active', email: '230111586@gehu.ac.in', cgpa: '8.3' },
-    { id: 5, name: 'Abhay Kanojia', rollNumber: '230111585', branch: 'CSE', year: '3rd', status: 'Active', email: '230111585@gehu.ac.in', cgpa: '8.6' },
-    { id: 6, name: 'Harsh Rawat', rollNumber: '230111584', branch: 'CSE', year: '3rd', status: 'Active', email: '230111584@gehu.ac.in', cgpa: '8.4' },
-    { id: 7, name: 'Ayush Chamoli', rollNumber: '230111583', branch: 'CSE', year: '3rd', status: 'Active', email: '230111583@gehu.ac.in', cgpa: '8.2' },
-    { id: 8, name: 'Ayush Bhatt', rollNumber: '230111582', branch: 'CSE', year: '3rd', status: 'Active', email: '230111582@gehu.ac.in', cgpa: '8.8' },
-    { id: 9, name: 'Muskan Sharma', rollNumber: '230111581', branch: 'CSE', year: '3rd', status: 'Active', email: '230111581@gehu.ac.in', cgpa: '9.0' },
-    { id: 10, name: 'Kashish Sharma', rollNumber: '230111580', branch: 'CSE', year: '3rd', status: 'Active', email: '230111580@gehu.ac.in', cgpa: '8.7' },
-    { id: 11, name: 'Harsh Pal', rollNumber: '230111579', branch: 'CSE', year: '3rd', status: 'Active', email: '230111579@gehu.ac.in', cgpa: '8.1' },
-    { id: 12, name: 'Sachin Bisht', rollNumber: '230111578', branch: 'CSE', year: '3rd', status: 'Active', email: '230111578@gehu.ac.in', cgpa: '8.5' }
-  ]);
-  const [faculty, setFaculty] = useState([
-    { id: 1, name: 'Sushant Chamoli', empId: '234555999', department: 'CSE', designation: 'Professor', email: '234555999@gehu.ac.in', courses: 5 },
-    { id: 2, name: 'Amit Gupta', empId: '234555998', department: 'CSE', designation: 'Associate Professor', email: '234555998@gehu.ac.in', courses: 4 },
-    { id: 3, name: 'Ashok Kumar', empId: '234555997', department: 'CSE', designation: 'Senior Professor', email: '234555997@gehu.ac.in', courses: 6 }
-  ]);
-  const [teams, setTeams] = useState([
-    { id: 1, name: 'AI Research Team', members: 4, project: 'Machine Learning Algorithms', status: 'Active', progress: 75 },
-    { id: 2, name: 'Web Dev Squad', members: 3, project: 'E-Commerce Platform', status: 'Active', progress: 90 },
-    { id: 3, name: 'Mobile Innovators', members: 5, project: 'Health Tracking App', status: 'Active', progress: 60 },
-    { id: 4, name: 'Data Science Squad', members: 3, project: 'Analytics Dashboard', status: 'Active', progress: 45 }
-  ]);
+  const [students, setStudents] = useState([]);
+  const [faculty, setFaculty] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchAdminData = async (token) => {
+      setLoading(true);
+      try {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const [studentsRes, facultyRes, teamsRes] = await Promise.all([
+          fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=student', { headers }),
+          fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=faculty', { headers }),
+          fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/teams', { headers })
+        ]);
+
+        if (studentsRes.ok) {
+          const data = await studentsRes.json();
+          setStudents(data.users || []);
+        }
+        if (facultyRes.ok) {
+          const data = await facultyRes.json();
+          setFaculty(data.users || []);
+        }
+        if (teamsRes.ok) {
+          const data = await teamsRes.json();
+          setTeams(data.teams || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin data', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     const userData = localStorage.getItem('user');
     if (userData) {
       const parsedUser = JSON.parse(userData);
       if (parsedUser.role === 'admin') {
         setUser(parsedUser);
+        fetchAdminData(parsedUser.token);
       } else {
         navigate('/login');
       }
@@ -47,24 +59,77 @@ const AdminDashboard = () => {
     }
   }, [navigate]);
 
-  const deleteStudent = (id) => {
-    if (window.confirm('Are you sure you want to delete this student?')) {
-      setStudents(students.filter(s => s.id !== id));
-      alert('Student deleted successfully');
+  const toggleUserStatus = async (id, currentStatus) => {
+    if (window.confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this user?`)) {
+      try {
+        const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/users/${id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`
+          },
+          body: JSON.stringify({ isActive: !currentStatus })
+        });
+        
+        if (response.ok) {
+          const { user: updatedUser } = await response.json();
+          setStudents(students.map(s => s.id === id ? { ...s, is_active: updatedUser.is_active } : s));
+          setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: updatedUser.is_active } : f));
+        } else {
+          alert('Failed to update user status');
+        }
+      } catch (error) {
+        console.error("Error updating user status", error);
+        alert('An error occurred');
+      }
     }
   };
 
-  const deleteFaculty = (id) => {
-    if (window.confirm('Are you sure you want to delete this faculty member?')) {
-      setFaculty(faculty.filter(f => f.id !== id));
-      alert('Faculty deleted successfully');
-    }
-  };
-
-  const deleteTeam = (id) => {
+  const deleteTeam = async (id) => {
     if (window.confirm('Are you sure you want to delete this team?')) {
-      setTeams(teams.filter(t => t.id !== id));
-      alert('Team deleted successfully');
+      try {
+        const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/teams/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+        
+        if (response.ok) {
+          setTeams(teams.filter(t => t.id !== id));
+          alert('Team deleted successfully');
+        } else {
+          alert('Failed to delete team');
+        }
+      } catch (error) {
+        console.error("Error deleting team", error);
+        alert('An error occurred');
+      }
+    }
+  };
+
+  const handleMaintenanceMode = () => {
+    if (window.confirm("Are you sure you want to enable global maintenance mode? This will make the system read-only for all users.")) {
+      const socket = io(socketUrl, { withCredentials: true });
+      socket.emit('triggerMaintenance', { role: 'admin' });
+      alert("Maintenance mode signal broadcasted.");
+    }
+  };
+
+  const handleBackup = async () => {
+    try {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/backup', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      if (response.ok) {
+        alert('Backup initiated successfully. The file will be saved on the server.');
+      } else {
+        alert('Failed to initiate backup');
+      }
+    } catch (error) {
+      console.error('Backup error:', error);
+      alert('An error occurred during backup request.');
     }
   };
 
@@ -73,7 +138,7 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
-  if (!user) return <div>Loading...</div>;
+  if (!user || loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', color: '#1e3a8a' }}>Loading System Data...</div>;
 
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh' }}>
@@ -444,16 +509,19 @@ const AdminDashboard = () => {
               <tbody>
                 {students.map(student => (
                   <tr key={student.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                    <td style={{ padding: '1rem' }}>{student.rollNumber}</td>
+                    <td style={{ padding: '1rem' }}>{student.roll_number}</td>
                     <td style={{ padding: '1rem' }}>{student.name}</td>
-                    <td style={{ padding: '1rem' }}>{student.branch}</td>
-                    <td style={{ padding: '1rem' }}>{student.year}</td>
+                    <td style={{ padding: '1rem' }}>{student.branch || 'N/A'}</td>
+                    <td style={{ padding: '1rem' }}>{student.year || 'N/A'}</td>
                     <td style={{ padding: '1rem' }}>
-                      <span style={{ background: '#27ae60', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem' }}>{student.status}</span>
+                      <span style={{ background: student.is_active ? '#27ae60' : '#e74c3c', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem' }}>
+                        {student.is_active ? 'Active' : 'Inactive'}
+                      </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <button style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginRight: '0.5rem' }}>Edit</button>
-                      <button onClick={() => deleteStudent(student.id)} style={{ padding: '0.5rem 1rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Delete</button>
+                      <button onClick={() => toggleUserStatus(student.id, student.is_active)} style={{ padding: '0.5rem 1rem', background: student.is_active ? '#e74c3c' : '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                        {student.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -482,13 +550,18 @@ const AdminDashboard = () => {
               <tbody>
                 {faculty.map(member => (
                   <tr key={member.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                    <td style={{ padding: '1rem' }}>{member.empId}</td>
+                    <td style={{ padding: '1rem' }}>{member.roll_number}</td>
                     <td style={{ padding: '1rem' }}>{member.name}</td>
-                    <td style={{ padding: '1rem' }}>{member.department}</td>
-                    <td style={{ padding: '1rem' }}>{member.designation}</td>
+                    <td style={{ padding: '1rem' }}>{member.branch || 'N/A'}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{ background: member.is_active ? '#27ae60' : '#e74c3c', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem' }}>
+                        {member.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <button style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginRight: '0.5rem' }}>Edit</button>
-                      <button onClick={() => deleteFaculty(member.id)} style={{ padding: '0.5rem 1rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Delete</button>
+                      <button onClick={() => toggleUserStatus(member.id, member.is_active)} style={{ padding: '0.5rem 1rem', background: member.is_active ? '#e74c3c' : '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                        {member.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -507,12 +580,11 @@ const AdminDashboard = () => {
               {teams.map(team => (
                 <div key={team.id} style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '10px', border: '1px solid #dee2e6' }}>
                   <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>{team.name}</h3>
-                  <p style={{ margin: '0 0 0.5rem 0', color: '#666' }}>Project: {team.project}</p>
+                  <p style={{ margin: '0 0 0.5rem 0', color: '#666' }}>Project: {team.project || 'No Project'}</p>
                   <p style={{ margin: '0 0 1rem 0', color: '#666' }}>Members: {team.members}</p>
-                  <span style={{ background: '#27ae60', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem' }}>{team.status}</span>
+                  <span style={{ background: team.status === 'active' ? '#27ae60' : '#95a5a6', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', textTransform: 'capitalize' }}>{team.status}</span>
                   <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-                    <button style={{ flex: 1, padding: '0.5rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>View</button>
-                    <button onClick={() => deleteTeam(team.id)} style={{ flex: 1, padding: '0.5rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Delete</button>
+                    <button onClick={() => deleteTeam(team.id)} style={{ flex: 1, padding: '0.5rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Delete Team</button>
                   </div>
                 </div>
               ))}
@@ -559,11 +631,11 @@ const AdminDashboard = () => {
               </div>
               <div style={{ padding: '1.5rem', background: '#f8f9fa', borderRadius: '10px' }}>
                 <h3 style={{ margin: '0 0 1rem 0' }}>System Maintenance</h3>
-                <button style={{ padding: '0.75rem 1.5rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Enable Maintenance Mode</button>
+                <button onClick={handleMaintenanceMode} style={{ padding: '0.75rem 1.5rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Enable Maintenance Mode</button>
               </div>
               <div style={{ padding: '1.5rem', background: '#f8f9fa', borderRadius: '10px' }}>
                 <h3 style={{ margin: '0 0 1rem 0' }}>Database Backup</h3>
-                <button style={{ padding: '0.75rem 1.5rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Create Backup Now</button>
+                <button onClick={handleBackup} style={{ padding: '0.75rem 1.5rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Create Backup Now</button>
               </div>
             </div>
           </div>

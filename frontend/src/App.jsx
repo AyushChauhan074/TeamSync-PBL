@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -9,7 +9,10 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
+import { io } from 'socket.io-client';
 import './App.css';
+
+const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }) => {
@@ -77,9 +80,37 @@ const Layout = ({ children }) => {
 };
 
 function App() {
+  const [maintenanceMode, setMaintenanceMode] = useState({ active: false, message: '' });
+
+  useEffect(() => {
+    const socket = io(socketUrl, {
+      withCredentials: true
+    });
+
+    socket.on('maintenanceMode', (data) => {
+      if (data && data.active) {
+        setMaintenanceMode({ active: true, message: data.message || 'System is in maintenance mode' });
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
   return (
     <Router>
-      <div className="App">
+      <div className="App" style={maintenanceMode.active ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
+        {maintenanceMode.active && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: '#e74c3c', color: 'white', padding: '1rem',
+            textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem',
+            pointerEvents: 'auto'
+          }}>
+            ⚠️ {maintenanceMode.message}
+          </div>
+        )}
         <Layout>
           <Routes>
             <Route path="/login" element={<Login />} />
