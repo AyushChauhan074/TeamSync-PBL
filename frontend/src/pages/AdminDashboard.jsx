@@ -14,6 +14,16 @@ const AdminDashboard = () => {
   const [faculty, setFaculty] = useState([]);
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Student Form State
+  const [studentFormMode, setStudentFormMode] = useState('view'); // 'view', 'add', 'edit'
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [studentFormData, setStudentFormData] = useState({
+    name: '', roll_number: '', email: '', password: '', 
+    branch: 'Computer Science', year: '1', section: '', github_username: '', skills: ''
+  });
+  const [formErrors, setFormErrors] = useState({});
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -120,38 +130,80 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddStudent = () => {
-    const name = window.prompt("Enter new student name:");
-    if (!name) return;
-    const roll = window.prompt("Enter roll number:");
-    if (!roll) return;
-    
-    const newStudent = {
-      id: Date.now(),
-      name,
-      roll_number: roll,
-      branch: 'Computer Science',
-      year: 3,
-      is_active: true
-    };
-    
-    // In a real app we'd POST to the server here, but for mock fallback we just update state
-    setStudents([...students, newStudent]);
+  const openAddMode = () => {
+    setStudentFormData({
+      name: '', roll_number: '', email: '', password: '', 
+      branch: 'Computer Science', year: '1', section: '', github_username: '', skills: ''
+    });
+    setFormErrors({});
+    setSelectedStudentId(null);
+    setStudentFormMode('add');
   };
 
-  const handleEditStudent = (id) => {
-    const student = students.find(s => s.id === id);
-    if (!student) return;
-    
-    const newName = window.prompt("Edit student name:", student.name);
-    if (newName === null) return; // user cancelled
-    
-    const newRoll = window.prompt("Edit roll number:", student.roll_number);
-    if (newRoll === null) return; // user cancelled
-    
-    setStudents(students.map(s => 
-      s.id === id ? { ...s, name: newName || s.name, roll_number: newRoll || s.roll_number } : s
-    ));
+  const openEditMode = (student) => {
+    setStudentFormData({
+      name: student.name || '',
+      roll_number: student.roll_number || '',
+      email: student.email || '',
+      password: '', // never prefill password
+      branch: student.branch || 'Computer Science',
+      year: student.year?.toString() || '1',
+      section: student.section || '',
+      github_username: student.github_username || '',
+      skills: Array.isArray(student.skills) ? student.skills.join(', ') : (student.skills || '')
+    });
+    setFormErrors({});
+    setSelectedStudentId(student.id);
+    setStudentFormMode('edit');
+  };
+
+  const handleCloseForm = () => {
+    setStudentFormMode('view');
+  };
+
+  const handleStudentFormChange = (e) => {
+    const { name, value } = e.target;
+    setStudentFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error when typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleStudentFormSubmit = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!studentFormData.name) errors.name = 'Name is required';
+    if (!studentFormData.roll_number) errors.roll_number = 'Roll Number is required';
+    if (!studentFormData.email || !studentFormData.email.includes('@')) errors.email = 'Valid email is required';
+    if (studentFormMode === 'add' && !studentFormData.password) errors.password = 'Password is required for new students';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    try {
+      if (studentFormMode === 'add') {
+        // Mock Add
+        const newStudent = {
+          id: Date.now(),
+          ...studentFormData,
+          year: parseInt(studentFormData.year),
+          is_active: true
+        };
+        setStudents([...students, newStudent]);
+      } else {
+        // Mock Edit
+        setStudents(students.map(s => 
+          s.id === selectedStudentId ? { ...s, ...studentFormData, year: parseInt(studentFormData.year) } : s
+        ));
+      }
+      handleCloseForm();
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred during submission.');
+    }
   };
 
   const deleteTeam = async (id) => {
@@ -560,11 +612,12 @@ const AdminDashboard = () => {
 
         {/* Students Section */}
         {activeSection === 'students' && (
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h2 style={{ margin: 0, color: '#2c3e50' }}>Student Management</h2>
-              <button onClick={handleAddStudent} style={{ padding: '0.75rem 1.5rem', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Add New Student</button>
-            </div>
+          <div className="students-split-layout">
+            <div className={`student-table-container ${studentFormMode !== 'view' ? 'split-width' : 'full-width'}`}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ margin: 0, color: '#2c3e50' }}>Student Management</h2>
+                <button onClick={openAddMode} style={{ padding: '0.75rem 1.5rem', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Add New Student</button>
+              </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
@@ -589,7 +642,7 @@ const AdminDashboard = () => {
                       </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                      <button onClick={() => handleEditStudent(student.id)} style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                      <button onClick={() => openEditMode(student)} style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
                         Edit
                       </button>
                       <button onClick={() => toggleUserStatus(student.id, student.is_active)} style={{ padding: '0.5rem 1rem', background: student.is_active ? '#e74c3c' : '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
@@ -600,6 +653,83 @@ const AdminDashboard = () => {
                 ))}
               </tbody>
             </table>
+            </div>
+
+            {/* Inline Student Form Side Panel */}
+            {studentFormMode !== 'view' && (
+              <div className="student-side-panel">
+                <h3>{studentFormMode === 'add' ? 'Add New Student' : 'Edit Student'}</h3>
+                <form onSubmit={handleStudentFormSubmit}>
+                  <div className="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" name="name" value={studentFormData.name} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. John Doe" />
+                    {formErrors.name && <span className="error-text">{formErrors.name}</span>}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>GEHU Roll Number *</label>
+                    <input type="text" name="roll_number" value={studentFormData.roll_number} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. 230111000" />
+                    {formErrors.roll_number && <span className="error-text">{formErrors.roll_number}</span>}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>University Email *</label>
+                    <input type="email" name="email" value={studentFormData.email} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. student@gehu.ac.in" />
+                    {formErrors.email && <span className="error-text">{formErrors.email}</span>}
+                  </div>
+                  
+                  {studentFormMode === 'add' && (
+                    <div className="form-group">
+                      <label>Password *</label>
+                      <input type="password" name="password" value={studentFormData.password} onChange={handleStudentFormChange} className="glass-input" placeholder="Min 6 characters" />
+                      {formErrors.password && <span className="error-text">{formErrors.password}</span>}
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Branch / Course</label>
+                    <select name="branch" value={studentFormData.branch} onChange={handleStudentFormChange} className="glass-input">
+                      <option value="Computer Science">B.Tech CSE</option>
+                      <option value="Mechanical Engineering">B.Tech ME</option>
+                      <option value="Civil Engineering">B.Tech CE</option>
+                      <option value="Electronics">B.Tech ECE</option>
+                      <option value="BCA">BCA</option>
+                    </select>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label>Year</label>
+                      <select name="year" value={studentFormData.year} onChange={handleStudentFormChange} className="glass-input">
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label>Section</label>
+                      <input type="text" name="section" value={studentFormData.section} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. A" />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>GitHub Username</label>
+                    <input type="text" name="github_username" value={studentFormData.github_username} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. johndoe99" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Core Technical Skills</label>
+                    <input type="text" name="skills" value={studentFormData.skills} onChange={handleStudentFormChange} className="glass-input" placeholder="e.g. React, Node.js, Python" />
+                  </div>
+
+                  <div className="panel-actions">
+                    <button type="button" onClick={handleCloseForm} className="btn-secondary">Cancel</button>
+                    <button type="submit" className="btn-primary">{studentFormMode === 'add' ? 'Create Student' : 'Save Changes'}</button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )}
 
