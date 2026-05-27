@@ -25,7 +25,8 @@ const Login = () => {
     if (userType === 'student' && formData.rollNumber && formData.password) {
       // Call backend API for authentication
       try {
-        const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+        const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1/auth/login` : 'http://localhost:8000/api/v1/auth/login';
+        const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -56,7 +57,8 @@ const Login = () => {
     } else if (userType === 'admin' && formData.username && formData.password) {
       // Admin login
       try {
-        const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+        const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1/auth/login` : 'http://localhost:8000/api/v1/auth/login';
+        const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
