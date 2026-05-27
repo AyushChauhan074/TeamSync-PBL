@@ -14,7 +14,12 @@ const PORT = process.env.PORT || 8000;
 // Setup Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [
+      process.env.FRONTEND_URL, 
+      'https://team-sync-pbl.vercel.app', 
+      'http://localhost:3000', 
+      'http://localhost:5173'
+    ].filter(Boolean),
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -43,7 +48,12 @@ if (process.env.DATABASE_URL) {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    process.env.FRONTEND_URL, 
+    'https://team-sync-pbl.vercel.app', 
+    'http://localhost:3000', 
+    'http://localhost:5173'
+  ].filter(Boolean),
   credentials: true
 }));
 app.use(express.json());

@@ -205,24 +205,7 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error(err);
-      const mentor = faculty.find(f => f.id == teamFormData.mentor_id);
-      const evaluator = faculty.find(f => f.id == teamFormData.evaluator_id);
-      
-      setTeams(teams.map(t => {
-        if (t.id === selectedTeamId) {
-          return {
-            ...t,
-            mentor_id: teamFormData.mentor_id,
-            evaluator_id: teamFormData.evaluator_id,
-            mentor_name: mentor ? mentor.name : '',
-            evaluator_name: evaluator ? evaluator.name : ''
-          };
-        }
-        return t;
-      }));
-      
-      showToast(`Team assigned successfully: Mentor ${mentor?.name} & Evaluator ${evaluator?.name} linked. (Mock)`, 'success');
-      handleCloseTeamForm();
+      showToast('Network error: Failed to update database', 'error');
     }
   };
 
@@ -250,18 +233,14 @@ const AdminDashboard = () => {
         const { user: updatedUser } = await response.json();
         setStudents(students.map(s => s.id === id ? { ...s, is_active: updatedUser.is_active } : s));
         setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: updatedUser.is_active } : f));
+        showToast(`${userName} is now ${currentStatus ? 'inactive' : 'active'}.`, 'success');
       } else {
-        // Mock mode fallback: toggle the state locally anyway so the UI works
-        setStudents(students.map(s => s.id === id ? { ...s, is_active: !currentStatus } : s));
-        setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: !currentStatus } : f));
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to update status', 'error');
       }
-      showToast(`${userName} is now ${currentStatus ? 'inactive' : 'active'}.`, 'success');
     } catch (error) {
       console.error("Error updating user status", error);
-      // Mock mode fallback
-      setStudents(students.map(s => s.id === id ? { ...s, is_active: !currentStatus } : s));
-      setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: !currentStatus } : f));
-      showToast(`${userName} is now ${currentStatus ? 'inactive' : 'active'}.`, 'success');
+      showToast('Network error: Failed to update database', 'error');
     }
   };
 
@@ -320,25 +299,12 @@ const AdminDashboard = () => {
     }
 
     try {
-      if (studentFormMode === 'add') {
-        // Mock Add
-        const newStudent = {
-          id: Date.now(),
-          ...studentFormData,
-          year: parseInt(studentFormData.year),
-          is_active: true
-        };
-        setStudents([...students, newStudent]);
-      } else {
-        // Mock Edit
-        setStudents(students.map(s => 
-          s.id === selectedStudentId ? { ...s, ...studentFormData, year: parseInt(studentFormData.year) } : s
-        ));
-      }
+      // Mock Add removed to prevent fake persistence
+      showToast('Student management API endpoint not yet implemented', 'error');
       handleCloseForm();
     } catch (err) {
       console.error(err);
-      alert('An error occurred during submission.');
+      showToast('Network error: Failed to update database', 'error');
     }
   };
 
@@ -423,33 +389,12 @@ const AdminDashboard = () => {
         showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully.`, 'success');
         handleCloseFacultyForm();
       } else {
-        const updatedFaculty = {
-          id: facultyFormMode === 'add' ? Date.now() : selectedFacultyId,
-          ...facultyFormData,
-          is_active: true
-        };
-        if (facultyFormMode === 'add') {
-          setFaculty([...faculty, updatedFaculty]);
-        } else {
-          setFaculty(faculty.map(f => f.id === selectedFacultyId ? { ...updatedFaculty, is_active: f.is_active } : f));
-        }
-        showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully (Mock).`, 'success');
-        handleCloseFacultyForm();
+        const errorData = await response.json();
+        showToast(errorData.error || `Failed to ${facultyFormMode === 'add' ? 'create' : 'update'} faculty`, 'error');
       }
     } catch (err) {
       console.error(err);
-      const updatedFaculty = {
-        id: facultyFormMode === 'add' ? Date.now() : selectedFacultyId,
-        ...facultyFormData,
-        is_active: true
-      };
-      if (facultyFormMode === 'add') {
-        setFaculty([...faculty, updatedFaculty]);
-      } else {
-        setFaculty(faculty.map(f => f.id === selectedFacultyId ? { ...updatedFaculty, is_active: f.is_active } : f));
-      }
-      showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully (Mock).`, 'success');
-      handleCloseFacultyForm();
+      showToast('Network error: Failed to update database', 'error');
     }
   };
 
