@@ -8,7 +8,7 @@ module.exports = (pool) => {
       const { role, page = 1, limit = 50 } = req.query;
       const offset = (page - 1) * limit;
       
-      let query = 'SELECT id, roll_number, name, email, role, branch, year, is_active FROM users';
+      let query = 'SELECT id, roll_number, name, email, role, branch, year, designation, is_active FROM users';
       const queryParams = [];
       
       if (role) {
@@ -24,6 +24,79 @@ module.exports = (pool) => {
     } catch (error) {
       console.error('Admin get users error:', error);
       res.status(500).json({ error: 'Failed to fetch users' });
+    }
+  });
+
+  // Create new faculty
+  router.post('/faculty', async (req, res) => {
+    try {
+      const { name, roll_number, email, password, branch, designation } = req.body;
+      
+      if (!name || !roll_number || !email || !password) {
+        return res.status(400).json({ error: 'Required fields are missing' });
+      }
+
+      const bcrypt = require('bcrypt');
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const insertQuery = `
+        INSERT INTO users (roll_number, name, email, password_hash, role, branch, designation, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+        RETURNING id, roll_number, name, email, role, branch, designation, is_active
+      `;
+      const result = await pool.query(insertQuery, [
+        roll_number,
+        name,
+        email.toLowerCase(),
+        passwordHash,
+        'faculty',
+        branch || 'Computer Science',
+        designation || 'Assistant Professor'
+      ]);
+
+      res.status(201).json({ success: true, user: result.rows[0] });
+    } catch (error) {
+      if (error.code === '23505') {
+        return res.status(400).json({ error: 'Faculty with this email or ID already exists.' });
+      }
+      console.error('Admin create faculty error:', error);
+      res.status(500).json({ error: 'Failed to create faculty' });
+    }
+  });
+
+  // Update existing faculty
+  router.put('/faculty/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, roll_number, email, branch, designation } = req.body;
+      
+      const updateQuery = `
+        UPDATE users 
+        SET name = $1, roll_number = $2, email = $3, branch = $4, designation = $5, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6 AND role = 'faculty'
+        RETURNING id, roll_number, name, email, role, branch, designation, is_active
+      `;
+      
+      const result = await pool.query(updateQuery, [
+        name,
+        roll_number,
+        email.toLowerCase(),
+        branch,
+        designation,
+        id
+      ]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Faculty not found' });
+      }
+
+      res.json({ success: true, user: result.rows[0] });
+    } catch (error) {
+      if (error.code === '23505') {
+        return res.status(400).json({ error: 'Faculty with this email or ID already exists.' });
+      }
+      console.error('Admin update faculty error:', error);
+      res.status(500).json({ error: 'Failed to update faculty' });
     }
   });
 
