@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
@@ -9,13 +9,14 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
+import FacultyDashboard from './pages/FacultyDashboard';
 import { io } from 'socket.io-client';
 import './App.css';
 
 const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Protected Route Component
-const ProtectedRoute = ({ children, adminOnly = false }) => {
+const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [] }) => {
   const user = localStorage.getItem('user');
   if (!user) return <Navigate to="/login" />;
   
@@ -27,7 +28,12 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
     localStorage.removeItem('token');
     return <Navigate to="/login" />;
   }
+  
   if (adminOnly && userData.userType !== 'admin') {
+    return <Navigate to="/login" />;
+  }
+  
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userData.userType)) {
     return <Navigate to="/login" />;
   }
   
@@ -150,6 +156,17 @@ function App() {
                 <AdminDashboard />
               </ProtectedRoute>
             } />
+
+            {/* Faculty Routes */}
+            <Route path="/faculty" element={
+              <ProtectedRoute allowedRoles={['faculty']}>
+                <Outlet />
+              </ProtectedRoute>
+            }>
+              <Route path="dashboard" element={<FacultyDashboard />} />
+              <Route path="evaluations" element={<div style={{ padding: '2rem' }}><h1>Evaluations Panel</h1><p>Coming Soon</p></div>} />
+            </Route>
+
           </Routes>
         </Layout>
       </div>

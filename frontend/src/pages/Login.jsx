@@ -46,7 +46,12 @@ const Login = () => {
             userType: data.user.role
           }));
           localStorage.setItem('token', data.token);
-          navigate('/home');
+          
+          if (data.user.role === 'faculty') {
+            navigate('/faculty/dashboard');
+          } else {
+            navigate('/home');
+          }
         } else {
           alert(data.error || 'Login failed');
         }

@@ -81,6 +81,7 @@ const projectRoutes = require('./routes/projects')(pool);
 const messageRoutes = require('./routes/messages')(pool);
 const adminRoutes = require('./routes/admin')(pool);
 const studentRoutes = require('./routes/student')(pool);
+const facultyRoutes = require('./routes/faculty')(pool);
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -90,6 +91,7 @@ app.use('/api/v1/projects', authMiddleware, maintenanceGate(pool), projectRoutes
 app.use('/api/v1/messages', authMiddleware, maintenanceGate(pool), messageRoutes);
 app.use('/api/v1/admin', authMiddleware, adminOnly, adminRoutes);
 app.use('/api/v1/student', authMiddleware, maintenanceGate(pool), studentRoutes);
+app.use('/api/v1/faculty', authMiddleware, maintenanceGate(pool), facultyRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

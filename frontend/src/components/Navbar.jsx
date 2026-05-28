@@ -118,57 +118,98 @@ const Navbar = () => {
               padding: 0,
               alignItems: 'center'
             }}>
-              <li>
-                <Link to="/home" style={{
-                  color: window.location.pathname === '/home' ? '#111827' : '#6b7280',
-                  textDecoration: 'none',
-                  padding: '0.65rem 1.2rem',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontWeight: window.location.pathname === '/home' ? '600' : '500',
-                  fontSize: '0.95rem',
-                  transition: 'all 0.2s ease',
-                  background: window.location.pathname === '/home' ? '#f9fafb' : 'transparent'
-                }}>
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link to="/teams" style={{
-                  color: window.location.pathname === '/teams' ? '#111827' : '#6b7280',
-                  textDecoration: 'none',
-                  padding: '0.65rem 1.2rem',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontWeight: window.location.pathname === '/teams' ? '600' : '500',
-                  fontSize: '0.95rem',
-                  transition: 'all 0.2s ease',
-                  background: window.location.pathname === '/teams' ? '#f9fafb' : 'transparent'
-                }}>
-                  My Teams
-                </Link>
-              </li>
-              <li>
-                <Link to="/projects" style={{
-                  color: window.location.pathname === '/projects' ? '#111827' : '#6b7280',
-                  textDecoration: 'none',
-                  padding: '0.65rem 1.2rem',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontWeight: window.location.pathname === '/projects' ? '600' : '500',
-                  fontSize: '0.95rem',
-                  transition: 'all 0.2s ease',
-                  background: window.location.pathname === '/projects' ? '#f9fafb' : 'transparent'
-                }}>
-                  Projects
-                </Link>
-              </li>
+              {user.role === 'faculty' ? (
+                <>
+                  <li>
+                    <Link to="/faculty/dashboard" style={{
+                      color: window.location.pathname === '/faculty/dashboard' ? '#111827' : '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.65rem 1.2rem',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: window.location.pathname === '/faculty/dashboard' ? '600' : '500',
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s ease',
+                      background: window.location.pathname === '/faculty/dashboard' ? '#f9fafb' : 'transparent'
+                    }}>
+                      Home
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/faculty/evaluations" style={{
+                      color: window.location.pathname === '/faculty/evaluations' ? '#111827' : '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.65rem 1.2rem',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: window.location.pathname === '/faculty/evaluations' ? '600' : '500',
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s ease',
+                      background: window.location.pathname === '/faculty/evaluations' ? '#f9fafb' : 'transparent'
+                    }}>
+                      Evaluations
+                    </Link>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    <Link to="/home" style={{
+                      color: window.location.pathname === '/home' ? '#111827' : '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.65rem 1.2rem',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: window.location.pathname === '/home' ? '600' : '500',
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s ease',
+                      background: window.location.pathname === '/home' ? '#f9fafb' : 'transparent'
+                    }}>
+                      Home
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/teams" style={{
+                      color: window.location.pathname === '/teams' ? '#111827' : '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.65rem 1.2rem',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: window.location.pathname === '/teams' ? '600' : '500',
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s ease',
+                      background: window.location.pathname === '/teams' ? '#f9fafb' : 'transparent'
+                    }}>
+                      My Teams
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/projects" style={{
+                      color: window.location.pathname === '/projects' ? '#111827' : '#6b7280',
+                      textDecoration: 'none',
+                      padding: '0.65rem 1.2rem',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: window.location.pathname === '/projects' ? '600' : '500',
+                      fontSize: '0.95rem',
+                      transition: 'all 0.2s ease',
+                      background: window.location.pathname === '/projects' ? '#f9fafb' : 'transparent'
+                    }}>
+                      Projects
+                    </Link>
+                  </li>
+                </>
+              )}
             </ul>
             
             {/* Profile Dropdown */}
