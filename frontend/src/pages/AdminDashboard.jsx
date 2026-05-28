@@ -190,44 +190,35 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/teams/${selectedTeamId}/allocate`, {
+      const data = await apiFetch(`/admin/teams/${selectedTeamId}/allocate`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify({
+        body: {
           mentorId: teamFormData.mentor_id,
           evaluatorId: teamFormData.evaluator_id
-        })
+        }
       });
 
       const mentor = faculty.find(f => f.id == teamFormData.mentor_id);
       const evaluator = faculty.find(f => f.id == teamFormData.evaluator_id);
 
-      if (response.ok) {
-        setTeams(teams.map(t => {
-          if (t.id === selectedTeamId) {
-            return {
-              ...t,
-              mentor_id: teamFormData.mentor_id,
-              evaluator_id: teamFormData.evaluator_id,
-              mentor_name: mentor ? mentor.name : '',
-              evaluator_name: evaluator ? evaluator.name : ''
-            };
-          }
-          return t;
-        }));
-        
-        showToast(`Team assigned successfully: Mentor ${mentor?.name} & Evaluator ${evaluator?.name} linked.`, 'success');
-        handleCloseTeamForm();
-      } else {
-        const errorData = await response.json();
-        showToast(errorData.error || 'Failed to allocate team', 'error');
-      }
+      setTeams(teams.map(t => {
+        if (t.id === selectedTeamId) {
+          return {
+            ...t,
+            mentor_id: teamFormData.mentor_id,
+            evaluator_id: teamFormData.evaluator_id,
+            mentor_name: mentor ? mentor.name : '',
+            evaluator_name: evaluator ? evaluator.name : ''
+          };
+        }
+        return t;
+      }));
+      
+      showToast(`Team assigned successfully: Mentor ${mentor?.name} & Evaluator ${evaluator?.name} linked.`, 'success');
+      handleCloseTeamForm();
     } catch (err) {
       console.error(err);
-      showToast('Network error: Failed to update database', 'error');
+      showToast(err.message || 'Network error: Failed to update database', 'error');
     }
   };
 
@@ -242,27 +233,18 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/users/${id}/status`, {
+      const data = await apiFetch(`/admin/users/${id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ isActive: !currentStatus })
+        body: { isActive: !currentStatus }
       });
       
-      if (response.ok) {
-        const { user: updatedUser } = await response.json();
-        setStudents(students.map(s => s.id === id ? { ...s, is_active: updatedUser.is_active } : s));
-        setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: updatedUser.is_active } : f));
-        showToast(`${userName} is now ${currentStatus ? 'inactive' : 'active'}.`, 'success');
-      } else {
-        const errorData = await response.json();
-        showToast(errorData.error || 'Failed to update status', 'error');
-      }
+      const { user: updatedUser } = data;
+      setStudents(students.map(s => s.id === id ? { ...s, is_active: updatedUser.is_active } : s));
+      setFaculty(faculty.map(f => f.id === id ? { ...f, is_active: updatedUser.is_active } : f));
+      showToast(`${userName} is now ${currentStatus ? 'inactive' : 'active'}.`, 'success');
     } catch (error) {
       console.error("Error updating user status", error);
-      showToast('Network error: Failed to update database', 'error');
+      showToast(error.message || 'Network error: Failed to update database', 'error');
     }
   };
 
@@ -435,20 +417,15 @@ const AdminDashboard = () => {
   const deleteTeam = async (id) => {
     if (window.confirm('Are you sure you want to delete this team?')) {
       try {
-        const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/teams/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        await apiFetch(`/admin/teams/${id}`, {
+          method: 'DELETE'
         });
         
-        if (response.ok) {
-          setTeams(teams.filter(t => t.id !== id));
-          alert('Team deleted successfully');
-        } else {
-          alert('Failed to delete team');
-        }
+        setTeams(teams.filter(t => t.id !== id));
+        showToast('Team deleted successfully', 'success');
       } catch (error) {
         console.error("Error deleting team", error);
-        alert('An error occurred');
+        showToast(error.message || 'Failed to delete team', 'error');
       }
     }
   };
@@ -456,13 +433,8 @@ const AdminDashboard = () => {
   const fetchSettingsData = async () => {
     try {
       setSettingsLoading(true);
-      const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/settings', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
-      }
+      const data = await apiFetch('/admin/settings');
+      setSettings(data);
     } catch (error) {
       console.error('Failed to fetch settings:', error);
     } finally {
@@ -476,20 +448,11 @@ const AdminDashboard = () => {
     setSettings({ ...settings, [key]: value });
 
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/settings', {
+      const updatedSettings = await apiFetch('/admin/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ [key]: value })
+        body: { [key]: value }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save setting');
-      }
-      
-      const updatedSettings = await response.json();
       setSettings(updatedSettings);
       showToast('Setting updated successfully', 'success');
       
@@ -521,22 +484,15 @@ const AdminDashboard = () => {
   const handleBackup = async () => {
     try {
       showToast('Initiating database backup...', 'success');
-      const response = await fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/backup', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const data = await apiFetch('/admin/backup', {
+        method: 'POST'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setSettings({ ...settings, last_backup_time: data.timestamp });
-        showToast('Database backup completed successfully', 'success');
-      } else {
-        showToast('Failed to initiate backup', 'error');
-      }
+      
+      setSettings({ ...settings, last_backup_time: data.timestamp });
+      showToast('Database backup completed successfully', 'success');
     } catch (error) {
       console.error('Backup error:', error);
-      showToast('An error occurred during backup request.', 'error');
+      showToast(error.message || 'An error occurred during backup request.', 'error');
     }
   };
 
