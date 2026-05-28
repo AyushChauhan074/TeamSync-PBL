@@ -349,5 +349,76 @@ router.put('/handle-request/:requestId', async (req, res) => {
   }
 });
 
+// Get team members for workspace modal
+router.get('/:teamId/members', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const userId = req.user?.userId || req.user?.id;
+
+    // Security Validation Guard
+    const memberCheck = await pool.query(
+      'SELECT team_id, role FROM users WHERE id = $1', 
+      [userId]
+    );
+
+    const userTeamId = memberCheck.rows[0]?.team_id;
+    const userRole = memberCheck.rows[0]?.role;
+
+    if (userTeamId !== parseInt(teamId) && userRole !== 'admin' && userRole !== 'faculty') {
+      return res.status(403).json({ error: "Access Denied: You are not a member of this workspace team region." });
+    }
+
+    const query = `
+      SELECT id, name, roll_number, email, github_username, profile_image_url
+      FROM users
+      WHERE team_id = $1
+      ORDER BY name ASC
+    `;
+    
+    const result = await pool.query(query, [teamId]);
+    res.json({ members: result.rows });
+    
+  } catch (error) {
+    console.error('Get team members error:', error);
+    res.status(500).json({ error: 'Failed to fetch team members' });
+  }
+});
+
+// Get team messages for workspace modal
+router.get('/:teamId/messages', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const userId = req.user?.userId || req.user?.id;
+
+    // Security Validation Guard
+    const memberCheck = await pool.query(
+      'SELECT team_id, role FROM users WHERE id = $1', 
+      [userId]
+    );
+
+    const userTeamId = memberCheck.rows[0]?.team_id;
+    const userRole = memberCheck.rows[0]?.role;
+
+    if (userTeamId !== parseInt(teamId) && userRole !== 'admin' && userRole !== 'faculty') {
+      return res.status(403).json({ error: "Access Denied: You are not a member of this workspace team region." });
+    }
+
+    const query = `
+      SELECT m.id, m.message_text, m.created_at, u.id as sender_id, u.name as sender_name
+      FROM messages m
+      JOIN users u ON m.sender_id = u.id
+      WHERE m.team_id = $1
+      ORDER BY m.created_at ASC
+    `;
+    
+    const result = await pool.query(query, [teamId]);
+    res.json({ messages: result.rows });
+    
+  } catch (error) {
+    console.error('Get team messages error:', error);
+    res.status(500).json({ error: 'Failed to fetch team messages' });
+  }
+});
+
 return router;
 };

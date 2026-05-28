@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import apiFetch from '../utils/api';
 import { io } from 'socket.io-client';
 
@@ -9,6 +9,7 @@ const Teams = () => {
   const [teams, setTeams] = useState([]);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [loading, setLoading] = useState(true);
 
@@ -36,9 +37,8 @@ const Teams = () => {
   }, [navigate]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('overview');
   const [newTeam, setNewTeam] = useState({ name: '', projectName: '', githubRepoUrl: '', description: '', maxMembers: 4, skills: [] });
   const [joinCode, setJoinCode] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -46,6 +46,7 @@ const Teams = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [showFilePreview, setShowFilePreview] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
   const socketRef = useRef(null);
 
   // Initialize socket connection
@@ -68,13 +69,16 @@ const Teams = () => {
     };
   }, []);
 
-  // Fetch chat history when opening chat for a team
+  // Fetch team details (members and messages) when opening the workspace modal
   useEffect(() => {
-    if (showChatModal && selectedTeam && user) {
-      const fetchHistory = async () => {
+    if (showTeamModal && selectedTeam && user) {
+      const fetchTeamData = async () => {
         try {
-          const data = await apiFetch(`/messages/team/${selectedTeam.id}`);
-          const formattedMessages = data.messages.map(m => ({
+          const membersData = await apiFetch(`/teams/${selectedTeam.id}/members`);
+          setTeamMembers(membersData.members || []);
+
+          const messagesData = await apiFetch(`/teams/${selectedTeam.id}/messages`);
+          const formattedMessages = messagesData.messages.map(m => ({
             id: m.id,
             sender: m.sender_id === (user.userId || user.id) ? 'You' : m.sender_name,
             message: m.message_text,
@@ -85,12 +89,20 @@ const Teams = () => {
           // Join socket room
           socketRef.current.emit('joinTeamRoom', selectedTeam.id);
         } catch (error) {
-          console.error('Failed to fetch chat history', error);
+          console.error('Failed to fetch team workspace data', error);
         }
       };
-      fetchHistory();
+      fetchTeamData();
     }
-  }, [showChatModal, selectedTeam, user]);
+  }, [showTeamModal, selectedTeam, user]);
+
+  const handleCloseModal = () => {
+    setSelectedTeam(null);
+    setShowTeamModal(false);
+    setActiveTab('overview');
+    setMessages([]); // Flushes the state cache permanently on exit
+    setTeamMembers([]);
+  };
 
   const generateTeamCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -475,42 +487,44 @@ const Teams = () => {
             </div>
             
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button 
-                onClick={() => alert(`Joined ${team.name}!`)}
-                style={{
-                  flex: 1,
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '0.85rem',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontSize: '0.95rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)';
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="8.5" cy="7" r="4"/>
-                  <line x1="20" y1="8" x2="20" y2="14"/>
-                  <line x1="23" y1="11" x2="17" y2="11"/>
-                </svg>
-                Join Team
-              </button>
+              {location.pathname !== '/teams' && (
+                <button 
+                  onClick={() => alert(`Joined ${team.name}!`)}
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.85rem',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '0.95rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)';
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                  </svg>
+                  Join Team
+                </button>
+              )}
               <button 
                 onClick={() => { setSelectedTeam(team); setShowTeamModal(true); }}
                 style={{
@@ -704,111 +718,7 @@ const Teams = () => {
         </div>
       )}
 
-      {/* Full Screen Chat Modal */}
-      {showChatModal && selectedTeam && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#f5f5f5', zIndex: 1001, display: 'flex', flexDirection: 'column' }}>
-          {/* Chat Header */}
-          <div style={{ background: '#2c3e50', color: 'white', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ width: '40px', height: '40px', background: '#3498db', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                {selectedTeam.name.split(' ').map(n => n[0]).join('')}
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{selectedTeam.name}</h3>
-                <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.8 }}>{selectedTeam.members} members • {selectedTeam.status}</p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <button onClick={startVideoCall} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }} title="Video Call">📹</button>
-              <button onClick={startVoiceCall} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }} title="Voice Call">📞</button>
-              <button onClick={openWhiteboard} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', padding: '0.5rem' }} title="Whiteboard">🎨</button>
-              <button onClick={() => setShowChatModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.5rem', padding: '0.5rem' }}>×</button>
-            </div>
-          </div>
 
-          {/* Messages Area */}
-          <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {messages.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#666', marginTop: '2rem' }}>
-                <p>No messages yet. Start the conversation!</p>
-              </div>
-            ) : (
-              messages.map(msg => (
-                <div key={msg.id} style={{ display: 'flex', justifyContent: msg.sender === 'You' ? 'flex-end' : 'flex-start' }}>
-                  <div style={{ maxWidth: '70%', display: 'flex', flexDirection: msg.sender === 'You' ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '0.5rem' }}>
-                    {msg.sender !== 'You' && (
-                      <div style={{ width: '35px', height: '35px', background: '#95a5a6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                        {msg.sender.split(' ').map(n => n[0]).join('')}
-                      </div>
-                    )}
-                    <div style={{ background: msg.sender === 'You' ? '#3498db' : 'white', color: msg.sender === 'You' ? 'white' : '#333', padding: '0.75rem 1rem', borderRadius: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'relative' }}>
-                      {msg.sender !== 'You' && (
-                        <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.25rem', color: '#3498db' }}>{msg.sender}</div>
-                      )}
-                      <div style={{ fontSize: '0.95rem', lineHeight: '1.4' }}>{msg.message}</div>
-                      <div style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem', textAlign: msg.sender === 'You' ? 'right' : 'left' }}>{msg.time}</div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Message Input */}
-          <div style={{ background: 'white', padding: '1rem 2rem', borderTop: '1px solid #e0e0e0', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="file"
-                accept="image/*,.pdf,.doc,.docx,.txt,.zip"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file && file.size <= 5 * 1024 * 1024) {
-                    const fileMsg = {
-                      id: Date.now(),
-                      sender: 'You',
-                      message: `📎 ${file.name}`,
-                      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    };
-                    setMessages(prev => [...prev, fileMsg]);
-                  } else {
-                    alert('File size must be less than 5MB');
-                  }
-                }}
-                style={{ display: 'none' }}
-                id="fileInput"
-              />
-              <label htmlFor="fileInput" style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#666' }}>📎</label>
-            </div>
-            <input
-              type="text"
-              value={chatMessage}
-              onChange={(e) => setChatMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Type a message..."
-              style={{ flex: 1, padding: '0.75rem 1rem', border: '1px solid #e0e0e0', borderRadius: '25px', outline: 'none', fontSize: '1rem' }}
-            />
-            <button 
-              onClick={sendMessage}
-              disabled={!chatMessage.trim()}
-              style={{ 
-                background: chatMessage.trim() ? '#3498db' : '#bdc3c7', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '50%', 
-                width: '45px', 
-                height: '45px', 
-                cursor: chatMessage.trim() ? 'pointer' : 'not-allowed', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '1.2rem'
-              }}
-            >
-              ➤
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Team Details Modal */}
       {showTeamModal && selectedTeam && (
@@ -817,7 +727,7 @@ const Teams = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h2 style={{ color: '#2c3e50', margin: 0 }}>{selectedTeam.name}</h2>
               <button 
-                onClick={() => setShowTeamModal(false)}
+                onClick={handleCloseModal}
                 style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}
               >
                 ×
@@ -826,7 +736,7 @@ const Teams = () => {
 
             {/* Team Navigation */}
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '2px solid #ecf0f1' }}>
-              {['chat', 'members', 'invite', 'qr'].map(tab => (
+              {['overview', 'chat', 'github'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -838,91 +748,169 @@ const Teams = () => {
                     borderRadius: '10px 10px 0 0',
                     cursor: 'pointer',
                     fontWeight: 'bold',
-                    textTransform: 'capitalize'
+                    textTransform: 'capitalize',
+                    borderBottom: activeTab === tab ? '2px solid #2980b9' : 'none'
                   }}
                 >
-                  {tab === 'qr' ? 'QR Code' : tab}
+                  {tab === 'github' ? 'GitHub Metrics' : tab}
                 </button>
               ))}
             </div>
 
-            {/* Chat Tab */}
-            {activeTab === 'chat' && (
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
               <div>
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                  <button onClick={startVideoCall} style={{ padding: '0.5rem 1rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Video Call</button>
-                  <button onClick={startVoiceCall} style={{ padding: '0.5rem 1rem', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Voice Call</button>
-                  <button onClick={openWhiteboard} style={{ padding: '0.5rem 1rem', background: '#9b59b6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Whiteboard</button>
-                  <button onClick={() => { setShowChatModal(true); setShowTeamModal(false); }} style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Open Full Chat</button>
+                <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', borderLeft: '4px solid #3498db' }}>
+                  <h3 style={{ marginTop: 0, color: '#2c3e50', fontSize: '1.3rem' }}>{selectedTeam.project_name || 'No Project Assigned'}</h3>
+                  <p style={{ color: '#555', lineHeight: '1.6', fontSize: '1rem' }}>{selectedTeam.description}</p>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+                    <div style={{ background: '#ecf0f1', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem', color: '#34495e', fontWeight: 'bold' }}>
+                      Token Code: <span style={{ fontFamily: 'monospace', fontSize: '1.1rem', letterSpacing: '2px', color: '#2980b9' }}>{selectedTeam.code}</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ height: '200px', border: '2px solid #ecf0f1', borderRadius: '10px', padding: '1rem', overflowY: 'auto', marginBottom: '1rem' }}>
-                  {messages.slice(-3).map(msg => (
-                    <div key={msg.id} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: msg.sender === 'You' ? '#3498db' : '#ecf0f1', borderRadius: '8px', color: msg.sender === 'You' ? 'white' : '#333' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '0.8rem', marginBottom: '0.25rem' }}>{msg.sender} <span style={{ opacity: 0.7, fontSize: '0.7rem' }}>{msg.time}</span></div>
-                      <div style={{ fontSize: '0.9rem' }}>{msg.message}</div>
+
+                <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>Active Roster ({teamMembers.length}/{selectedTeam.max_members})</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                  {teamMembers.map((member, index) => (
+                    <div key={member.id || index} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#ffffff', border: '1px solid #ecf0f1', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+                      <div style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #3498db, #2980b9)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', marginRight: '1rem', fontSize: '1.1rem' }}>
+                        {member.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#333' }}>{member.name}</div>
+                        <div style={{ color: '#7f8c8d', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                          {member.roll_number} • {member.role === 'leader' || selectedTeam.creator_id === member.id ? 'Team Leader' : 'Member'}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <p style={{ textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>Click "Open Full Chat" for complete chat experience</p>
               </div>
             )}
 
-            {/* Members Tab */}
-            {activeTab === 'members' && (
-              <div>
-                <h3 style={{ marginBottom: '1rem' }}>Team Members ({selectedTeam.members}/{selectedTeam.maxMembers})</h3>
-                {selectedTeam.membersList.map((member, index) => (
-                  <div key={index} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#f8f9fa', borderRadius: '10px', marginBottom: '0.5rem' }}>
-                    <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #3498db, #2980b9)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', marginRight: '1rem' }}>
-                      {member.split(' ').map(n => n[0]).join('')}
+            {/* Chat Tab */}
+            {activeTab === 'chat' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '450px' }}>
+                <div style={{ flex: 1, border: '2px solid #ecf0f1', borderRadius: '10px 10px 0 0', padding: '1rem', overflowY: 'auto', background: '#fafafa' }}>
+                  {messages.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#95a5a6', marginTop: '2rem' }}>
+                      <p>No messages yet in this team room. Say hello!</p>
                     </div>
+                  ) : (
+                    messages.map(msg => (
+                      <div key={msg.id} style={{ display: 'flex', justifyContent: msg.sender === 'You' ? 'flex-end' : 'flex-start', marginBottom: '1rem' }}>
+                        <div style={{ maxWidth: '75%', display: 'flex', flexDirection: msg.sender === 'You' ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '0.5rem' }}>
+                          {msg.sender !== 'You' && (
+                            <div style={{ width: '32px', height: '32px', background: '#95a5a6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              {msg.sender.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                            </div>
+                          )}
+                          <div style={{ background: msg.sender === 'You' ? '#3498db' : '#ffffff', border: msg.sender === 'You' ? 'none' : '1px solid #e0e0e0', color: msg.sender === 'You' ? 'white' : '#333', padding: '0.75rem 1rem', borderRadius: '18px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            {msg.sender !== 'You' && (
+                              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#2980b9' }}>{msg.sender}</div>
+                            )}
+                            <div style={{ fontSize: '0.95rem', lineHeight: '1.4' }}>{msg.message}</div>
+                            <div style={{ fontSize: '0.7rem', opacity: msg.sender === 'You' ? 0.9 : 0.6, marginTop: '0.4rem', textAlign: msg.sender === 'You' ? 'right' : 'left' }}>{msg.time}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Chat Input */}
+                <div style={{ background: 'white', padding: '1rem', border: '2px solid #ecf0f1', borderTop: 'none', borderRadius: '0 0 10px 10px', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    placeholder="Type a message to the team room..."
+                    style={{ flex: 1, padding: '0.85rem 1.2rem', border: '1px solid #e0e0e0', borderRadius: '25px', outline: 'none', fontSize: '0.95rem', background: '#f8f9fa' }}
+                  />
+                  <button 
+                    onClick={sendMessage}
+                    disabled={!chatMessage.trim()}
+                    style={{ 
+                      background: chatMessage.trim() ? '#3498db' : '#bdc3c7', 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '50%', 
+                      width: '45px', 
+                      height: '45px', 
+                      cursor: chatMessage.trim() ? 'pointer' : 'not-allowed', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      transition: 'background 0.2s',
+                      boxShadow: chatMessage.trim() ? '0 4px 10px rgba(52, 152, 219, 0.3)' : 'none'
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* GitHub Tab */}
+            {activeTab === 'github' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #ecf0f1' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                    </svg>
                     <div>
-                      <div style={{ fontWeight: 'bold' }}>{member}</div>
-                      <div style={{ color: '#666', fontSize: '0.9rem' }}>{index === 0 ? 'Team Leader' : 'Member'}</div>
+                      <h3 style={{ margin: 0, color: '#333' }}>Repository Link</h3>
+                      <a href={selectedTeam.github_repo_url || '#'} target="_blank" rel="noreferrer" style={{ color: '#3498db', textDecoration: 'none', fontSize: '0.95rem' }}>
+                        {selectedTeam.github_repo_url ? selectedTeam.github_repo_url.replace('https://github.com/', '') : 'No repository linked yet'}
+                      </a>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <a href={selectedTeam.github_repo_url || '#'} target="_blank" rel="noreferrer" style={{ padding: '0.75rem 1.5rem', background: '#333', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                    Open in GitHub
+                  </a>
+                </div>
 
-            {/* Invite Tab */}
-            {activeTab === 'invite' && (
-              <div>
-                <h3 style={{ marginBottom: '1rem' }}>Invite Members</h3>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Email Address</label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="Enter email address"
-                      style={{ flex: 1, padding: '0.75rem', border: '2px solid #3498db', borderRadius: '10px', outline: 'none' }}
-                    />
-                    <button onClick={sendInvite} style={{ padding: '0.75rem 1.5rem', background: '#27ae60', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>Send Invite</button>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                  <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ecf0f1', textAlign: 'center' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#27ae60', marginBottom: '0.5rem' }}>14</div>
+                    <div style={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: '600' }}>Total Commits</div>
+                  </div>
+                  <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ecf0f1', textAlign: 'center' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12', marginBottom: '0.5rem' }}>3</div>
+                    <div style={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: '600' }}>Active Branches</div>
+                  </div>
+                  <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ecf0f1', textAlign: 'center' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8e44ad', marginBottom: '0.5rem' }}>1</div>
+                    <div style={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: '600' }}>Open PRs</div>
                   </div>
                 </div>
-                <div style={{ padding: '1rem', background: '#f8f9fa', borderRadius: '10px' }}>
-                  <strong>Share Team Code:</strong>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                    <span style={{ background: '#2c3e50', color: 'white', padding: '0.5rem 1rem', borderRadius: '10px', fontFamily: 'monospace', fontSize: '1.2rem' }}>{selectedTeam.code}</span>
-                    <button onClick={() => navigator.clipboard.writeText(selectedTeam.code)} style={{ padding: '0.5rem 1rem', background: '#3498db', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>Copy</button>
+                
+                <div style={{ background: '#fdfdfd', borderRadius: '12px', border: '1px solid #ecf0f1', padding: '1.5rem' }}>
+                  <h4 style={{ margin: '0 0 1rem 0', color: '#2c3e50' }}>Recent Activity Stream</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {/* Mock Activity Items */}
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#27ae60', marginTop: '6px' }}></div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>Merged PR: Database Schema Update</div>
+                        <div style={{ color: '#7f8c8d', fontSize: '0.85rem' }}>2 hours ago by System</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3498db', marginTop: '6px' }}></div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>Pushed to main: update README.md</div>
+                        <div style={{ color: '#7f8c8d', fontSize: '0.85rem' }}>Yesterday by System</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* QR Code Tab */}
-            {activeTab === 'qr' && (
-              <div style={{ textAlign: 'center' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Team QR Code</h3>
-                <div style={{ display: 'inline-block', padding: '2rem', background: '#f8f9fa', borderRadius: '15px' }}>
-                  <img src={selectedTeam.qrCode} alt="Team QR Code" style={{ width: '200px', height: '200px', border: '2px solid #3498db', borderRadius: '10px' }} />
-                </div>
-                <p style={{ marginTop: '1rem', color: '#666' }}>Scan this QR code to join the team</p>
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>Team Code: </strong>
-                  <span style={{ background: '#2c3e50', color: 'white', padding: '0.5rem 1rem', borderRadius: '10px', fontFamily: 'monospace' }}>{selectedTeam.code}</span>
                 </div>
               </div>
             )}
