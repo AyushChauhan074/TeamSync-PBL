@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import gehuLogo from '../assets/GEHU_LOGO.png';
 import './AdminDashboard.css';
+import { apiFetch } from '../utils/api';
 
 
 const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -70,38 +71,29 @@ const AdminDashboard = () => {
     if (!selectedSecurityUser) return;
 
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/security/update/${selectedSecurityUser.id}`, {
+      const data = await apiFetch(`/admin/security/update/${selectedSecurityUser.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
+        body: {
           newLoginId: securityFormData.newLoginId,
           plainTextPassword: securityFormData.plainTextPassword
-        })
+        }
       });
 
-      if (response.ok) {
-        const { user: updatedUser } = await response.json();
-        
-        // Update local state arrays based on role
-        if (updatedUser.role === 'student') {
-          setStudents(students.map(s => s.id === updatedUser.id ? { ...s, roll_number: updatedUser.roll_number } : s));
-        } else {
-          setFaculty(faculty.map(f => f.id === updatedUser.id ? { ...f, faculty_id: updatedUser.faculty_id, roll_number: updatedUser.roll_number } : f));
-        }
-        
-        showToast('Security database override complete: Credentials updated successfully.', 'success');
-        setSelectedSecurityUser(null);
-        setSecurityFormData({ newLoginId: '', plainTextPassword: '' });
+      const { user: updatedUser } = data;
+      
+      // Update local state arrays based on role
+      if (updatedUser.role === 'student') {
+        setStudents(students.map(s => s.id === updatedUser.id ? { ...s, roll_number: updatedUser.roll_number } : s));
       } else {
-        const errorData = await response.json();
-        showToast(errorData.error || 'Failed to update credentials', 'error');
+        setFaculty(faculty.map(f => f.id === updatedUser.id ? { ...f, faculty_id: updatedUser.faculty_id, roll_number: updatedUser.roll_number } : f));
       }
+      
+      showToast('Security database override complete: Credentials updated successfully.', 'success');
+      setSelectedSecurityUser(null);
+      setSecurityFormData({ newLoginId: '', plainTextPassword: '' });
     } catch (error) {
       console.error('Error updating security credentials:', error);
-      showToast('Network error: Failed to update database', 'error');
+      showToast(error.message || 'Network error: Failed to update database', 'error');
     }
   };
 
@@ -113,37 +105,20 @@ const AdminDashboard = () => {
         setLoading(true);
         const headers = { 'Authorization': `Bearer ${token}` };
         
-        const [studentsRes, facultyRes, teamsRes] = await Promise.all([
-          fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=student', { headers }),
-          fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/users?role=faculty', { headers }),
-          fetch(import.meta.env.VITE_API_URL + '/api/v1/admin/teams', { headers })
+        const [studentsData, facultyData, teamsData] = await Promise.all([
+          apiFetch('/admin/users?role=student'),
+          apiFetch('/admin/users?role=faculty'),
+          apiFetch('/admin/teams')
         ]);
 
-        if (studentsRes.ok) {
-          const data = await studentsRes.json();
-          setStudents(data.users || []);
-        } else {
-          console.error('Failed to fetch students:', studentsRes.status);
-          setStudents([]);
-        }
-        
-        if (facultyRes.ok) {
-          const data = await facultyRes.json();
-          setFaculty(data.users || []);
-        } else {
-          console.error('Failed to fetch faculty:', facultyRes.status);
-          setFaculty([]);
-        }
-        
-        if (teamsRes.ok) {
-          const data = await teamsRes.json();
-          setTeams(data.teams || []);
-        } else {
-          console.error('Failed to fetch teams:', teamsRes.status);
-          setTeams([]);
-        }
+        setStudents(studentsData.users || []);
+        setFaculty(facultyData.users || []);
+        setTeams(teamsData.teams || []);
       } catch (error) {
         console.error('Failed to fetch admin data', error);
+        setStudents([]);
+        setFaculty([]);
+        setTeams([]);
       } finally {
         setLoading(false);
       }
@@ -346,24 +321,18 @@ const AdminDashboard = () => {
     }
 
     try {
-      const url = studentFormMode === 'add' 
-        ? import.meta.env.VITE_API_URL + '/api/v1/admin/students'
-        : import.meta.env.VITE_API_URL + `/api/v1/admin/students/${selectedStudentId}`;
+      const endpoint = studentFormMode === 'add' 
+        ? '/admin/students'
+        : `/admin/students/${selectedStudentId}`;
         
       const method = studentFormMode === 'add' ? 'POST' : 'PUT';
       
-      const response = await fetch(url, {
+      const data = await apiFetch(endpoint, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(studentFormData)
+        body: studentFormData
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const updatedStudent = data.user || {
+      const updatedStudent = data.user || {
           id: studentFormMode === 'add' ? Date.now() : selectedStudentId,
           ...studentFormData,
           year: parseInt(studentFormData.year),
@@ -377,13 +346,9 @@ const AdminDashboard = () => {
         }
         showToast(`Student ${studentFormData.name} ${studentFormMode === 'add' ? 'created' : 'updated'} successfully.`, 'success');
         handleCloseForm();
-      } else {
-        const errorData = await response.json();
-        showToast(errorData.error || `Failed to ${studentFormMode === 'add' ? 'create' : 'update'} student`, 'error');
-      }
     } catch (err) {
       console.error(err);
-      showToast('Network error: Failed to update database', 'error');
+      showToast(err.message || 'Network error: Failed to update database', 'error');
     }
   };
 
@@ -437,43 +402,33 @@ const AdminDashboard = () => {
     }
 
     try {
-      const url = facultyFormMode === 'add' 
-        ? import.meta.env.VITE_API_URL + '/api/v1/admin/faculty'
-        : import.meta.env.VITE_API_URL + `/api/v1/admin/faculty/${selectedFacultyId}`;
+      const endpoint = facultyFormMode === 'add' 
+        ? '/admin/faculty'
+        : `/admin/faculty/${selectedFacultyId}`;
         
       const method = facultyFormMode === 'add' ? 'POST' : 'PUT';
       
-      const response = await fetch(url, {
+      const data = await apiFetch(endpoint, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(facultyFormData)
+        body: facultyFormData
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const updatedFaculty = data.faculty || data.user || {
-          id: facultyFormMode === 'add' ? Date.now() : selectedFacultyId,
-          ...facultyFormData,
-          is_active: true
-        };
-        
-        if (facultyFormMode === 'add') {
-          setFaculty([...faculty, updatedFaculty]);
-        } else {
-          setFaculty(faculty.map(f => f.id === selectedFacultyId ? { ...f, ...updatedFaculty } : f));
-        }
-        showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully.`, 'success');
-        handleCloseFacultyForm();
+      const updatedFaculty = data.faculty || data.user || {
+        id: facultyFormMode === 'add' ? Date.now() : selectedFacultyId,
+        ...facultyFormData,
+        is_active: true
+      };
+      
+      if (facultyFormMode === 'add') {
+        setFaculty([...faculty, updatedFaculty]);
       } else {
-        const errorData = await response.json();
-        showToast(errorData.error || `Failed to ${facultyFormMode === 'add' ? 'create' : 'update'} faculty`, 'error');
+        setFaculty(faculty.map(f => f.id === selectedFacultyId ? { ...f, ...updatedFaculty } : f));
       }
+      showToast(`Faculty ${facultyFormData.name} ${facultyFormMode === 'add' ? 'created' : 'updated'} successfully.`, 'success');
+      handleCloseFacultyForm();
     } catch (err) {
       console.error(err);
-      showToast('Network error: Failed to update database', 'error');
+      showToast(err.message || 'Network error: Failed to update database', 'error');
     }
   };
 
