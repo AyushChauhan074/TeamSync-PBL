@@ -28,7 +28,7 @@ const authMiddleware = (req, res, next) => {
  * Admin-only middleware — must be used AFTER authMiddleware.
  */
 const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && req.user.role && req.user.role.toLowerCase() === 'admin') {
     next();
   } else {
     res.status(403).json({ error: 'Access denied. Admin privileges required.' });

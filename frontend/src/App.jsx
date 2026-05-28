@@ -23,17 +23,15 @@ const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [] }) => {
   let userData;
   try {
     userData = JSON.parse(user);
-  } catch {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+  } catch (e) {
     return <Navigate to="/login" />;
   }
-  
-  if (adminOnly && userData.userType !== 'admin') {
+
+  if (adminOnly && (!userData.userType || userData.userType.toLowerCase() !== 'admin')) {
     return <Navigate to="/login" />;
   }
-  
-  if (allowedRoles.length > 0 && !allowedRoles.includes(userData.userType)) {
+
+  if (allowedRoles.length > 0 && (!userData.userType || !allowedRoles.includes(userData.userType.toLowerCase()))) {
     return <Navigate to="/login" />;
   }
   

@@ -153,8 +153,8 @@ const AdminDashboard = () => {
     setTeamFormMode('edit');
     setSelectedTeamId(team.id);
     setTeamFormData({
-      name: team.name || '',
-      project: team.project || '',
+      name: team.team_name || team.name || '',
+      project: team.project_title || team.project || '',
       mentor_id: team.mentor_id || '',
       evaluator_id: team.evaluator_id || ''
     });
