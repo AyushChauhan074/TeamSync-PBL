@@ -26,6 +26,7 @@ CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     project_name VARCHAR(150),
+    github_repo_url VARCHAR(255),
     description TEXT,
     code VARCHAR(10) UNIQUE NOT NULL,
     max_members INTEGER DEFAULT 4,

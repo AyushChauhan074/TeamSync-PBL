@@ -34,7 +34,7 @@ const Teams = () => {
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [activeTab, setActiveTab] = useState('chat');
-  const [newTeam, setNewTeam] = useState({ name: '', projectName: '', description: '', maxMembers: 4, skills: [] });
+  const [newTeam, setNewTeam] = useState({ name: '', projectName: '', githubRepoUrl: '', description: '', maxMembers: 4, skills: [] });
   const [joinCode, setJoinCode] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [chatMessage, setChatMessage] = useState('');
@@ -103,6 +103,7 @@ const Teams = () => {
         body: {
           name: newTeam.name,
           projectName: newTeam.projectName,
+          githubRepoUrl: newTeam.githubRepoUrl,
           description: newTeam.description,
           maxMembers: parseInt(newTeam.maxMembers),
           requiredSkills: newTeam.skills
@@ -110,7 +111,7 @@ const Teams = () => {
       });
       
       setTeams([...teams, response.team]);
-      setNewTeam({ name: '', projectName: '', description: '', maxMembers: 4, skills: [] });
+      setNewTeam({ name: '', projectName: '', githubRepoUrl: '', description: '', maxMembers: 4, skills: [] });
       setShowCreateModal(false);
       alert(`Team created successfully! Code: ${response.team.code}`);
     } catch (error) {
@@ -609,6 +610,24 @@ const Teams = () => {
                   onChange={(e) => setNewTeam({...newTeam, description: e.target.value})}
                   placeholder="Describe your team's purpose and goals"
                   style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', minHeight: '100px', fontSize: '1rem', color: '#111827', resize: 'vertical', fontFamily: 'inherit', transition: 'border-color 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontWeight: '600', color: '#111827', fontSize: '0.95rem' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                  </svg>
+                  Project GitHub Repository Link
+                </label>
+                <input
+                  type="url"
+                  value={newTeam.githubRepoUrl}
+                  onChange={(e) => setNewTeam({...newTeam, githubRepoUrl: e.target.value})}
+                  placeholder="https://github.com/username/repository"
+                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', fontSize: '1rem', color: '#111827', transition: 'border-color 0.2s' }}
                   onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                   onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                 />

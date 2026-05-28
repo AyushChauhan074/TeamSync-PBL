@@ -40,9 +40,12 @@ if (process.env.DATABASE_URL) {
     } else {
       console.log('Connected to PostgreSQL Database');
       
-      // Auto-migrate team project_name
-      client.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS project_name VARCHAR(150) DEFAULT 'Unknown Project'`)
-        .then(() => console.log('Auto-migration: verified teams.project_name column'))
+      // Auto-migrate team project_name and github_repo_url
+      client.query(`
+        ALTER TABLE teams ADD COLUMN IF NOT EXISTS project_name VARCHAR(150) DEFAULT 'Unknown Project';
+        ALTER TABLE teams ADD COLUMN IF NOT EXISTS github_repo_url VARCHAR(255);
+      `)
+        .then(() => console.log('Auto-migration: verified teams schema columns'))
         .catch(migrateErr => console.error('Auto-migration error:', migrateErr.message))
         .finally(() => release());
     }

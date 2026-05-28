@@ -72,7 +72,7 @@ router.get('/my-teams/:userId', async (req, res) => {
 router.post('/', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { name, projectName, description, maxMembers, requiredSkills } = req.body;
+    const { name, projectName, githubRepoUrl, description, maxMembers, requiredSkills } = req.body;
     const createdBy = req.user?.userId || req.user?.id;
     
     // Input validation
@@ -84,6 +84,12 @@ router.post('/', async (req, res) => {
     }
     if (!projectName || !projectName.trim()) {
       return res.status(400).json({ error: 'Project name is required.' });
+    }
+
+    // GitHub URL Regex Validation
+    const githubRegex = /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/;
+    if (!githubRepoUrl || !githubRegex.test(githubRepoUrl)) {
+      return res.status(400).json({ error: 'Please enter a valid GitHub repository URL link.' });
     }
 
     // Global Admin Constraint Enforcement (Max 10 per system rules)
@@ -99,14 +105,15 @@ router.post('/', async (req, res) => {
     await client.query('BEGIN');
 
     const insertQuery = `
-      INSERT INTO teams (name, project_name, description, max_members, required_skills, created_by, code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO teams (name, project_name, github_repo_url, description, max_members, required_skills, created_by, code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
     
     const result = await client.query(insertQuery, [
       name.trim(),
       projectName.trim(),
+      githubRepoUrl.trim(),
       description || '',
       membersCap,
       requiredSkills || [],
