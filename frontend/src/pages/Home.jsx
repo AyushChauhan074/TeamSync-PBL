@@ -24,6 +24,7 @@ const Home = () => {
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState({});
+  const [selectedPreviewTeam, setSelectedPreviewTeam] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -362,12 +363,12 @@ const Home = () => {
                   ))
                 ) : (
                   (searchQuery ? searchResults : [...teams].slice(0, 5)).map(team => (
-                    <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.95)', borderRadius: '15px', color: '#333', backdropFilter: 'blur(10px)', border: '1px solid #e5e7eb' }}>
+                    <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.95)', borderRadius: '15px', color: '#333', backdropFilter: 'blur(10px)', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }} onClick={() => setSelectedPreviewTeam(team)} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
                       <div style={{ flex: 1 }}>
                         <h4 style={{ margin: '0 0 0.25rem 0', color: '#111827' }}>{team.name}</h4>
                         <p style={{ margin: '0', color: '#4b5563' }}>Code: {team.code || 'N/A'}</p>
                       </div>
-                      <button onClick={() => joinTeam(team.id)} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#f5576c', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>Join Team</button>
+                      <div style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#f5576c', color: 'white', fontWeight: 'bold' }}>View Details</div>
                     </div>
                   ))
                 )}
@@ -647,6 +648,37 @@ const Home = () => {
               <button onClick={() => sendMessage(selectedProfile.id)} style={{ padding: '0.75rem 1.5rem', border: 'none', borderRadius: '25px', background: '#007bff', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>💬 Message</button>
               <button onClick={() => addFriend(selectedProfile.id)} style={{ padding: '0.75rem 1.5rem', border: 'none', borderRadius: '25px', background: '#28a745', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>👥 Add Friend</button>
               <button onClick={() => connectForTeam(selectedProfile.id)} style={{ padding: '0.75rem 1.5rem', border: 'none', borderRadius: '25px', background: '#17a2b8', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>🤝 Connect</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discovery Preview Modal */}
+      {selectedPreviewTeam && (
+        <div className="preview-modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setSelectedPreviewTeam(null)}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '24px', padding: '2.5rem', maxWidth: '550px', width: '90%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'scaleIn 0.2s ease-out' }} onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h2 style={{ color: '#111827', margin: '0 0 0.5rem 0', fontSize: '1.8rem', fontWeight: '800' }}>{selectedPreviewTeam.project_name || selectedPreviewTeam.name}</h2>
+              <p style={{ margin: 0, color: '#4b5563', fontSize: '1.1rem', fontWeight: '600' }}>Team: {selectedPreviewTeam.name}</p>
+            </div>
+            
+            <div style={{ background: 'rgba(255, 255, 255, 0.5)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
+              <h4 style={{ color: '#111827', margin: '0 0 0.5rem 0', fontWeight: '700' }}>Project Description</h4>
+              <p style={{ color: '#111827', margin: 0, lineHeight: '1.6', fontSize: '1rem' }}>{selectedPreviewTeam.description || 'No description provided.'}</p>
+              
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+                <p style={{ margin: 0, color: '#111827', fontSize: '0.95rem' }}>
+                  <strong style={{ fontWeight: '700' }}>Leader:</strong> {selectedPreviewTeam.creator_name || 'Unknown'}
+                </p>
+                <p style={{ margin: '0.5rem 0 0 0', color: '#111827', fontSize: '0.95rem' }}>
+                  <strong style={{ fontWeight: '700' }}>Capacity:</strong> {selectedPreviewTeam.current_members} / {selectedPreviewTeam.max_members} Members
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button onClick={() => setSelectedPreviewTeam(null)} style={{ padding: '0.75rem 1.5rem', background: 'rgba(255, 255, 255, 0.9)', color: '#111827', border: '1px solid #e5e7eb', borderRadius: '12px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}>Cancel</button>
+              <button onClick={() => { joinTeam(selectedPreviewTeam.id); setSelectedPreviewTeam(null); }} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)', transition: 'transform 0.2s' }}>Request to Join</button>
             </div>
           </div>
         </div>

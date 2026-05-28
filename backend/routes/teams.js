@@ -8,6 +8,7 @@ module.exports = (pool) => {
 router.get('/', async (req, res) => {
   try {
     const { search } = req.query;
+    const currentUserId = req.user?.userId || req.user?.id;
     
     let query = `
       SELECT t.*, u.name as creator_name,
@@ -19,13 +20,13 @@ router.get('/', async (req, res) => {
         FROM team_members
         GROUP BY team_id
       ) tm ON t.id = tm.team_id
-      WHERE t.status != 'inactive'
+      WHERE t.status != 'inactive' AND t.created_by != $1
     `;
     
-    const params = [];
+    const params = [currentUserId];
     
     if (search) {
-      query += ` AND (t.name ILIKE $1 OR t.description ILIKE $1 OR $1 = ANY(t.required_skills))`;
+      query += ` AND (t.name ILIKE $2 OR t.description ILIKE $2 OR $2 = ANY(t.required_skills))`;
       params.push(`%${search}%`);
     }
     
