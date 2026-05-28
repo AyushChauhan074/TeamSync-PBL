@@ -151,3 +151,12 @@ CREATE TABLE team_messages (
 );
 
 CREATE INDEX idx_team_messages_team_id ON team_messages(team_id);
+
+-- Messages archive for Team Room Chat
+CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+    sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    message_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

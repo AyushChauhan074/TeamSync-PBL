@@ -420,5 +420,53 @@ router.get('/:teamId/messages', async (req, res) => {
   }
 });
 
+// Post a new message to the team workspace
+router.post('/:teamId/messages', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { message_text } = req.body;
+    const userId = req.user?.userId || req.user?.id;
+
+    if (!message_text || message_text.trim() === '') {
+      return res.status(400).json({ error: "Message text cannot be empty." });
+    }
+
+    // Security Validation Guard
+    const memberCheck = await pool.query(
+      'SELECT team_id, role FROM users WHERE id = $1', 
+      [userId]
+    );
+
+    const userTeamId = memberCheck.rows[0]?.team_id;
+    const userRole = memberCheck.rows[0]?.role;
+
+    if (userTeamId !== parseInt(teamId) && userRole !== 'admin' && userRole !== 'faculty') {
+      return res.status(403).json({ error: "Access Denied: You are not a member of this workspace team region." });
+    }
+
+    // Two-Step Selection Fix: Insert first, then query with JOIN to return sender_name
+    const insertResult = await pool.query(
+      'INSERT INTO messages (team_id, sender_id, message_text) VALUES ($1, $2, $3) RETURNING *',
+      [teamId, userId, message_text.trim()]
+    );
+
+    const messageId = insertResult.rows[0].id;
+
+    // Fetch the clean row joined with the sender's actual profile metadata name
+    const freshMessageRow = await pool.query(`
+      SELECT m.id, m.message_text, m.created_at, m.sender_id, u.name AS sender_name 
+      FROM messages m 
+      JOIN users u ON m.sender_id = u.id 
+      WHERE m.id = $1
+    `, [messageId]);
+
+    res.status(201).json(freshMessageRow.rows[0]);
+    
+  } catch (error) {
+    console.error('Post team message error:', error);
+    res.status(500).json({ error: 'Failed to send team message' });
+  }
+});
+
 return router;
 };

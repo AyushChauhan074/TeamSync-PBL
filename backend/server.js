@@ -9,6 +9,18 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const server = http.createServer(app);
+// Add automatic migration for the messages table
+pool.query(`
+  CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+      sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      message_text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`).then(() => console.log('Messages table verified.'))
+  .catch(e => console.error('Error migrating messages table:', e));
+
 const PORT = process.env.PORT || 8000;
 
 // Setup Socket.IO

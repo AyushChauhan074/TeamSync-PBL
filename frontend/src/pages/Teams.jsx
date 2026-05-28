@@ -42,12 +42,18 @@ const Teams = () => {
   const [newTeam, setNewTeam] = useState({ name: '', projectName: '', githubRepoUrl: '', description: '', maxMembers: 4, skills: [] });
   const [joinCode, setJoinCode] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
-  const [chatMessage, setChatMessage] = useState('');
+  const [newMessageText, setNewMessageText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [showFilePreview, setShowFilePreview] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const socketRef = useRef(null);
+  const chatEndRef = useRef(null);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   // Initialize socket connection
   useEffect(() => {
@@ -56,7 +62,7 @@ const Teams = () => {
     });
 
     socketRef.current.on('receiveMessage', (message) => {
-      setMessages((prev) => [...prev, {
+      setChatMessages((prev) => [...prev, {
         id: message.id,
         sender: message.sender_name,
         message: message.message_text,
@@ -84,7 +90,7 @@ const Teams = () => {
             message: m.message_text,
             time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }));
-          setMessages(formattedMessages);
+          setChatMessages(formattedMessages);
           
           // Join socket room
           socketRef.current.emit('joinTeamRoom', selectedTeam.id);
@@ -100,7 +106,7 @@ const Teams = () => {
     setSelectedTeam(null);
     setShowTeamModal(false);
     setActiveTab('overview');
-    setMessages([]); // Flushes the state cache permanently on exit
+    setChatMessages([]); // Flushes the state cache permanently on exit
     setTeamMembers([]);
   };
 
@@ -163,17 +169,34 @@ const Teams = () => {
     }
   };
 
-  const sendMessage = () => {
-    if (chatMessage.trim() && selectedTeam && user) {
-      // Emit to server
-      socketRef.current.emit('sendMessage', {
-        teamId: selectedTeam.id,
-        senderId: user.userId || user.id,
-        senderName: user.name,
-        messageText: chatMessage.trim()
-      });
-      
-      setChatMessage('');
+  const handleSendMessage = async () => {
+    if (newMessageText.trim() && selectedTeam && user) {
+      try {
+        const response = await apiFetch(`/teams/${selectedTeam.id}/messages`, {
+          method: 'POST',
+          body: { message_text: newMessageText.trim() }
+        });
+        
+        const sentMessage = {
+          id: response.id,
+          sender: 'You',
+          message: response.message_text,
+          time: new Date(response.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        setChatMessages(prev => [...prev, sentMessage]);
+        setNewMessageText('');
+        
+        // Also emit to socket for real-time delivery to others
+        socketRef.current.emit('sendMessage', {
+          teamId: selectedTeam.id,
+          senderId: user.userId || user.id,
+          senderName: user.name,
+          messageText: response.message_text
+        });
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      }
     }
   };
 
@@ -871,12 +894,12 @@ const Teams = () => {
             {activeTab === 'chat' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '450px' }}>
                 <div style={{ flex: 1, border: '2px solid #ecf0f1', borderRadius: '10px 10px 0 0', padding: '1rem', overflowY: 'auto', background: '#fafafa' }}>
-                  {messages.length === 0 ? (
+                  {chatMessages.length === 0 ? (
                     <div style={{ textAlign: 'center', color: '#95a5a6', marginTop: '2rem' }}>
                       <p>No messages yet in this team room. Say hello!</p>
                     </div>
                   ) : (
-                    messages.map(msg => (
+                    chatMessages.map(msg => (
                       <div key={msg.id} style={{ display: 'flex', justifyContent: msg.sender === 'You' ? 'flex-end' : 'flex-start', marginBottom: '1rem' }}>
                         <div style={{ maxWidth: '75%', display: 'flex', flexDirection: msg.sender === 'You' ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '0.5rem' }}>
                           {msg.sender !== 'You' && (
@@ -895,34 +918,35 @@ const Teams = () => {
                       </div>
                     ))
                   )}
+                  <div ref={chatEndRef} />
                 </div>
                 
                 {/* Chat Input */}
                 <div style={{ background: 'white', padding: '1rem', border: '2px solid #ecf0f1', borderTop: 'none', borderRadius: '0 0 10px 10px', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                   <input
                     type="text"
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    value={newMessageText}
+                    onChange={(e) => setNewMessageText(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="Type a message to the team room..."
                     style={{ flex: 1, padding: '0.85rem 1.2rem', border: '1px solid #e0e0e0', borderRadius: '25px', outline: 'none', fontSize: '0.95rem', background: '#f8f9fa' }}
                   />
                   <button 
-                    onClick={sendMessage}
-                    disabled={!chatMessage.trim()}
+                    onClick={handleSendMessage}
+                    disabled={!newMessageText.trim()}
                     style={{ 
-                      background: chatMessage.trim() ? '#3498db' : '#bdc3c7', 
+                      background: newMessageText.trim() ? '#3498db' : '#bdc3c7', 
                       color: 'white', 
                       border: 'none', 
                       borderRadius: '50%', 
                       width: '45px', 
                       height: '45px', 
-                      cursor: chatMessage.trim() ? 'pointer' : 'not-allowed', 
+                      cursor: newMessageText.trim() ? 'pointer' : 'not-allowed', 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center', 
                       transition: 'background 0.2s',
-                      boxShadow: chatMessage.trim() ? '0 4px 10px rgba(52, 152, 219, 0.3)' : 'none'
+                      boxShadow: newMessageText.trim() ? '0 4px 10px rgba(52, 152, 219, 0.3)' : 'none'
                     }}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
