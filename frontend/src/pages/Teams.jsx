@@ -10,6 +10,8 @@ const Teams = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchTeams = async () => {
       const userData = localStorage.getItem('user');
@@ -25,6 +27,8 @@ const Teams = () => {
         setTeams(data.teams || []);
       } catch (error) {
         console.error('Failed to fetch teams:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchTeams();
@@ -230,6 +234,10 @@ const Teams = () => {
     `);
   };
 
+  if (loading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem', color: '#666' }}>Loading your teams...</div>;
+  }
+
   return (
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header Section */}
@@ -352,7 +360,8 @@ const Teams = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             border: '1px solid #e5e7eb',
             transition: 'all 0.3s ease',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            position: 'relative'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
@@ -363,7 +372,13 @@ const Teams = () => {
             e.currentTarget.style.transform = 'translateY(0)';
           }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+            {(user?.userId || user?.id) === team.creator_id ? (
+              <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid rgba(59, 130, 246, 0.2)' }}>Leader</div>
+            ) : (
+              <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Joined</div>
+            )}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem', marginTop: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: '48px', height: '48px', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '700', fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
                   {team.name.split(' ').map(n => n[0]).join('').substring(0, 2)}

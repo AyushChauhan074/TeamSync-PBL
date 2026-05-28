@@ -47,9 +47,10 @@ router.get('/my-teams/:userId', async (req, res) => {
     const { userId } = req.params;
     
     const query = `
-      SELECT t.*, tm.role as user_role,
-             COALESCE(member_count.count, 0) as current_members
+      SELECT t.id, t.name, t.project_name, t.description, t.github_repo_url, t.code, t.created_by as creator_id, u.name AS leader_name, tm.role as user_role,
+             COALESCE(member_count.count, 0) as current_members, t.max_members
       FROM teams t
+      JOIN users u ON t.created_by = u.id
       JOIN team_members tm ON t.id = tm.team_id
       LEFT JOIN (
         SELECT team_id, COUNT(*) as count
