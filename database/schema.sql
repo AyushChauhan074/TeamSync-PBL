@@ -24,14 +24,15 @@ CREATE TABLE users (
 -- Teams table
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    project_name VARCHAR(150),
     description TEXT,
-    code VARCHAR(10) UNIQUE,
-    max_members INTEGER DEFAULT 6,
+    code VARCHAR(10) UNIQUE NOT NULL,
+    max_members INTEGER DEFAULT 4,
     current_members INTEGER DEFAULT 0,
     status VARCHAR(20) DEFAULT 'forming' CHECK (status IN ('forming', 'active', 'completed', 'inactive')),
     required_skills TEXT[],
-    created_by INTEGER REFERENCES users(id),
+    created_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

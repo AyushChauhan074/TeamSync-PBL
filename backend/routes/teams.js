@@ -70,32 +70,44 @@ router.get('/my-teams/:userId', async (req, res) => {
 
 // Create new team
 router.post('/', async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { name, description, maxMembers, requiredSkills, createdBy } = req.body;
+    const { name, projectName, description, maxMembers, requiredSkills, createdBy } = req.body;
     
     // Input validation
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Team name is required.' });
     }
+    if (!projectName || !projectName.trim()) {
+      return res.status(400).json({ error: 'Project name is required.' });
+    }
     if (!createdBy) {
       return res.status(400).json({ error: 'Creator ID is required.' });
     }
+
+    // Global Admin Constraint Enforcement (Max 10 per system rules)
+    const membersCap = parseInt(maxMembers) || 4;
+    if (membersCap > 10) {
+      return res.status(400).json({ error: 'Max members cannot exceed global administrative limit of 10.' });
+    }
     
-    // Generate a unique 6-character team code
-    const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
-    let code = generateCode();
-    // In a real app we'd verify uniqueness in a loop, but for now we'll assume it's unique
+    // Generate a unique 6-character uppercase alphanumeric team code
+    const crypto = require('crypto');
+    const code = crypto.randomBytes(3).toString('hex').toUpperCase();
     
+    await client.query('BEGIN');
+
     const insertQuery = `
-      INSERT INTO teams (name, description, max_members, required_skills, created_by, code)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO teams (name, project_name, description, max_members, required_skills, created_by, code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
     
-    const result = await pool.query(insertQuery, [
+    const result = await client.query(insertQuery, [
       name.trim(),
+      projectName.trim(),
       description || '',
-      maxMembers || 6,
+      membersCap,
       requiredSkills || [],
       createdBy,
       code
@@ -103,13 +115,15 @@ router.post('/', async (req, res) => {
     
     // Add creator as team leader
     const teamId = result.rows[0].id;
-    await pool.query(
+    await client.query(
       'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)',
       [teamId, createdBy, 'leader']
     );
     
-    // Log the activity
-    await logActivity(pool, createdBy, 'create_group', `You created team ${result.rows[0].name}`);
+    // Log the activity securely
+    await logActivity(client, createdBy, 'create_group', `You created team ${result.rows[0].name} for project ${projectName.trim()}`);
+
+    await client.query('COMMIT');
 
     res.status(201).json({ 
       success: true, 
@@ -117,8 +131,15 @@ router.post('/', async (req, res) => {
     });
     
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Create team error:', error);
-    res.status(500).json({ error: 'Failed to create team' });
+    // Handle unique name constraint gracefully
+    if (error.code === '23505' && error.constraint === 'teams_name_key') {
+       return res.status(409).json({ error: 'Team name already exists.' });
+    }
+    res.status(500).json({ error: 'Failed to create team due to database error' });
+  } finally {
+    client.release();
   }
 });
 

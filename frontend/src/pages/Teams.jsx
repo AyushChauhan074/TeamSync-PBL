@@ -34,7 +34,7 @@ const Teams = () => {
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [activeTab, setActiveTab] = useState('chat');
-  const [newTeam, setNewTeam] = useState({ name: '', description: '', maxMembers: 5, skills: [] });
+  const [newTeam, setNewTeam] = useState({ name: '', projectName: '', description: '', maxMembers: 4, skills: [] });
   const [joinCode, setJoinCode] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [chatMessage, setChatMessage] = useState('');
@@ -102,6 +102,7 @@ const Teams = () => {
         method: 'POST',
         body: {
           name: newTeam.name,
+          projectName: newTeam.projectName,
           description: newTeam.description,
           maxMembers: parseInt(newTeam.maxMembers),
           requiredSkills: newTeam.skills,
@@ -110,7 +111,7 @@ const Teams = () => {
       });
       
       setTeams([...teams, response.team]);
-      setNewTeam({ name: '', description: '', maxMembers: 5, skills: [] });
+      setNewTeam({ name: '', projectName: '', description: '', maxMembers: 4, skills: [] });
       setShowCreateModal(false);
       alert(`Team created successfully! Code: ${response.team.code}`);
     } catch (error) {
@@ -572,7 +573,25 @@ const Teams = () => {
                   value={newTeam.name}
                   onChange={(e) => setNewTeam({...newTeam, name: e.target.value})}
                   placeholder="Enter team name"
-                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', fontSize: '1rem', transition: 'border-color 0.2s' }}
+                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', fontSize: '1rem', color: '#111827', transition: 'border-color 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontWeight: '600', color: '#111827', fontSize: '0.95rem' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  </svg>
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  value={newTeam.projectName}
+                  onChange={(e) => setNewTeam({...newTeam, projectName: e.target.value})}
+                  placeholder="Enter project title or scope"
+                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', fontSize: '1rem', color: '#111827', transition: 'border-color 0.2s' }}
                   onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                   onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                 />
@@ -590,7 +609,7 @@ const Teams = () => {
                   value={newTeam.description}
                   onChange={(e) => setNewTeam({...newTeam, description: e.target.value})}
                   placeholder="Describe your team's purpose and goals"
-                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', minHeight: '100px', fontSize: '1rem', resize: 'vertical', fontFamily: 'inherit', transition: 'border-color 0.2s' }}
+                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', minHeight: '100px', fontSize: '1rem', color: '#111827', resize: 'vertical', fontFamily: 'inherit', transition: 'border-color 0.2s' }}
                   onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                   onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                 />
@@ -612,11 +631,11 @@ const Teams = () => {
                   onChange={(e) => setNewTeam({...newTeam, maxMembers: parseInt(e.target.value)})}
                   min="2"
                   max="10"
-                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', fontSize: '1rem', transition: 'border-color 0.2s' }}
+                  style={{ width: '100%', padding: '0.9rem 1rem', border: '2px solid #e5e7eb', borderRadius: '12px', outline: 'none', fontSize: '1rem', color: '#111827', transition: 'border-color 0.2s' }}
                   onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                   onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                 />
-                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Choose between 2-10 members</p>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Admin limit enforces max capacity</p>
               </div>
               
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>

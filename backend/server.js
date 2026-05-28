@@ -34,11 +34,17 @@ if (process.env.DATABASE_URL) {
     ssl: { rejectUnauthorized: false }
   });
 
-  pool.connect((err) => {
+  pool.connect((err, client, release) => {
     if (err) {
       console.error('DB connection error:', err.message);
     } else {
       console.log('Connected to PostgreSQL Database');
+      
+      // Auto-migrate team project_name
+      client.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS project_name VARCHAR(150) DEFAULT 'Unknown Project'`)
+        .then(() => console.log('Auto-migration: verified teams.project_name column'))
+        .catch(migrateErr => console.error('Auto-migration error:', migrateErr.message))
+        .finally(() => release());
     }
   });
 } else {
