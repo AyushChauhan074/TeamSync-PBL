@@ -97,8 +97,12 @@ router.post('/login', async (req, res) => {
 
     // First, try the database
     try {
-      const userQuery = 'SELECT * FROM users WHERE (roll_number = $1 OR faculty_id = $1) AND is_active = true';
-      const userResult = await pool.query(userQuery, [rollNumber.toUpperCase()]);
+      const userQuery = `
+        SELECT * FROM users 
+        WHERE (LOWER(roll_number) = LOWER($1) OR LOWER(faculty_id) = LOWER($1)) 
+          AND is_active = true
+      `;
+      const userResult = await pool.query(userQuery, [rollNumber.trim()]);
 
       if (userResult.rows.length > 0) {
         const user = userResult.rows[0];
