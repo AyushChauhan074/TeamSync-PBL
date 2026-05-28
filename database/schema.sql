@@ -160,3 +160,27 @@ CREATE TABLE IF NOT EXISTS messages (
     message_text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tracks a separate, specific meeting appointment slot for each milestone phase
+CREATE TABLE IF NOT EXISTS phase_meetups (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+    evaluator_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    phase_name VARCHAR(50) NOT NULL,
+    meetup_timestamp TIMESTAMP NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE,
+    UNIQUE(team_id, phase_name)
+);
+
+-- Tracks unique individual student scores for each phase instead of a flat team score
+CREATE TABLE IF NOT EXISTS individual_student_grades (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+    student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    phase_name VARCHAR(50) NOT NULL CHECK (phase_name IN ('planning', 'development', 'evaluation')),
+    score_acquired INT DEFAULT 0 CHECK (score_acquired >= 0 AND score_acquired <= 100),
+    evaluator_feedback TEXT,
+    graded_by INTEGER REFERENCES users(id),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(student_id, phase_name)
+);

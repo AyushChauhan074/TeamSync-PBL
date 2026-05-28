@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import FacultyDashboard from './pages/FacultyDashboard';
+import FacultyEvaluations from './pages/FacultyEvaluations';
 import { io } from 'socket.io-client';
 import './App.css';
 
@@ -162,7 +163,7 @@ function App() {
               </ProtectedRoute>
             }>
               <Route path="dashboard" element={<FacultyDashboard />} />
-              <Route path="evaluations" element={<div style={{ padding: '2rem' }}><h1>Evaluations Panel</h1><p>Coming Soon</p></div>} />
+              <Route path="evaluations" element={<FacultyEvaluations />} />
             </Route>
 
           </Routes>
