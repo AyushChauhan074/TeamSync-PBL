@@ -258,10 +258,16 @@ module.exports = (pool) => {
   router.get('/teams', async (req, res) => {
     try {
       const query = `
-        SELECT t.id, t.name, t.status, t.current_members as members, 
-               p.title as project, p.id as project_id, p.progress,
-               m.name as mentor_name, m.id as mentor_id,
-               e.name as evaluator_name, e.id as evaluator_id
+        SELECT 
+          t.id, 
+          t.name AS team_name, 
+          t.project_name AS project_title,
+          t.code,
+          t.max_members,
+          (SELECT COUNT(*) FROM team_members tm WHERE tm.team_id = t.id) AS members,
+          p.id as project_id, p.progress,
+          m.name as mentor_name, m.id as mentor_id,
+          e.name as evaluator_name, e.id as evaluator_id
         FROM teams t
         LEFT JOIN projects p ON t.id = p.team_id
         LEFT JOIN users m ON p.mentor_id = m.id

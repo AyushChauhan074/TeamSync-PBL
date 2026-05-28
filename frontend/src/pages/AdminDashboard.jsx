@@ -1230,8 +1230,8 @@ const AdminDashboard = () => {
                   {teams.map(team => (
                     <tr key={team.id} style={{ borderBottom: '1px solid #dee2e6' }}>
                       <td style={{ padding: '1rem' }}>{team.id}</td>
-                      <td style={{ padding: '1rem' }}>{team.name}</td>
-                      <td style={{ padding: '1rem' }}>{team.project || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>{team.team_name || team.name}</td>
+                      <td style={{ padding: '1rem' }}>{team.project_title || 'N/A'}</td>
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
                         {team.mentor_name ? (
                           <span style={{ background: '#20c997', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '15px', fontSize: '0.85rem' }}>{team.mentor_name}</span>
