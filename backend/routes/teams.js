@@ -199,15 +199,149 @@ router.post('/:code/join', async (req, res) => {
     // Log the activity
     await logActivity(pool, userId, 'join_squad', `You joined team ${teamResult.rows[0].name}`);
 
-    res.json({ success: true, message: 'Successfully joined team' });
+    res.status(200).json({ success: true, message: 'Successfully joined the team' });
     
   } catch (error) {
     await client.query('ROLLBACK');
-    if (error.code === '23505') { // Unique constraint violation
-      return res.status(400).json({ error: 'Already a member of this team' });
-    }
     console.error('Join team error:', error);
     res.status(500).json({ error: 'Failed to join team' });
+  } finally {
+    client.release();
+  }
+});
+
+// Request to join a team
+router.post('/request-join/:teamId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const studentId = req.user?.userId || req.user?.id;
+    const { teamId } = req.params;
+
+    if (!studentId) {
+      return res.status(401).json({ error: 'Unauthorized: Missing student ID.' });
+    }
+
+    await client.query('BEGIN');
+
+    // Verify team exists and get leader
+    const teamRes = await client.query('SELECT * FROM teams WHERE id = $1 FOR UPDATE', [teamId]);
+    if (teamRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Team not found.' });
+    }
+    const team = teamRes.rows[0];
+
+    // Check if student already in the team
+    const memberCheck = await client.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, studentId]);
+    if (memberCheck.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'You are already a member of this team.' });
+    }
+
+    // Check active member count
+    const memberCountRes = await client.query('SELECT COUNT(*) as count FROM team_members WHERE team_id = $1', [teamId]);
+    const currentMembers = parseInt(memberCountRes.rows[0].count);
+    if (currentMembers >= team.max_members) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'This team is already full.' });
+    }
+
+    // Insert pending request
+    const insertRes = await client.query(
+      `INSERT INTO team_requests (team_id, student_id, status) VALUES ($1, $2, 'pending') RETURNING id`,
+      [teamId, studentId]
+    );
+    const reqId = insertRes.rows[0].id;
+
+    // Telemetry: Send to team leader
+    const studentQuery = await client.query('SELECT name FROM users WHERE id = $1', [studentId]);
+    const studentName = studentQuery.rows[0]?.name || 'A student';
+    
+    await logActivity(client, team.created_by, 'request_entry', `${studentName} has requested to join your team ${team.name}|REQ_ID:${reqId}`);
+
+    await client.query('COMMIT');
+    res.status(200).json({ success: true, message: 'Join request sent successfully.' });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Request join error:', error);
+    if (error.code === '23505' && error.constraint === 'team_requests_team_id_student_id_key') {
+      return res.status(409).json({ error: 'You have already requested to join this team.' });
+    }
+    res.status(500).json({ error: 'Failed to request join.' });
+  } finally {
+    client.release();
+  }
+});
+
+// Handle join request (Approve/Reject)
+router.put('/handle-request/:requestId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const leaderId = req.user?.userId || req.user?.id;
+    const { requestId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    if (!leaderId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'Invalid action.' });
+
+    await client.query('BEGIN');
+
+    // Fetch the request and lock it
+    const reqRes = await client.query('SELECT * FROM team_requests WHERE id = $1 FOR UPDATE', [requestId]);
+    if (reqRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Request not found.' });
+    }
+    const teamReq = reqRes.rows[0];
+
+    if (teamReq.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Request already processed.' });
+    }
+
+    // Fetch the team to verify ownership
+    const teamRes = await client.query('SELECT * FROM teams WHERE id = $1', [teamReq.team_id]);
+    const team = teamRes.rows[0];
+
+    if (team.created_by !== leaderId) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Only the team creator can manage join requests.' });
+    }
+
+    // Fetch student info
+    const studentQuery = await client.query('SELECT name FROM users WHERE id = $1', [teamReq.student_id]);
+    const studentName = studentQuery.rows[0]?.name || 'Student';
+
+    if (action === 'approve') {
+      // Check members cap
+      const memberCountRes = await client.query('SELECT COUNT(*) as count FROM team_members WHERE team_id = $1', [team.id]);
+      const currentMembers = parseInt(memberCountRes.rows[0].count);
+      if (currentMembers >= team.max_members) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Cannot approve: team is full.' });
+      }
+
+      await client.query('UPDATE team_requests SET status = $1 WHERE id = $2', ['approved', requestId]);
+      await client.query(
+        'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [team.id, teamReq.student_id, 'member']
+      );
+      
+      await logActivity(client, teamReq.student_id, 'join_squad', `Your request to join team ${team.name} was approved.`);
+      await logActivity(client, leaderId, 'approve_request', `You approved ${studentName}'s request to join your team.`);
+    } else {
+      await client.query('UPDATE team_requests SET status = $1 WHERE id = $2', ['rejected', requestId]);
+      await logActivity(client, teamReq.student_id, 'reject_request', `Your request to join team ${team.name} was declined.`);
+    }
+
+    await client.query('COMMIT');
+    res.status(200).json({ success: true, message: `Request ${action}d successfully.` });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Handle request error:', error);
+    res.status(500).json({ error: 'Failed to process request.' });
   } finally {
     client.release();
   }

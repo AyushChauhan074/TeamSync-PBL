@@ -142,8 +142,29 @@ const Home = () => {
     alert(`Team collaboration request sent to user ${userId}!`);
   };
 
-  const joinTeam = (teamId) => {
-    alert(`Join request sent to team ${teamId}!`);
+  const joinTeam = async (teamId) => {
+    try {
+      const response = await apiFetch(`/teams/request-join/${teamId}`, { method: 'POST' });
+      alert(response.message || `Join request sent successfully!`);
+    } catch (error) {
+      alert(error.message || 'Failed to send join request');
+    }
+  };
+
+  const handleRequest = async (requestId, action) => {
+    try {
+      const response = await apiFetch(`/teams/handle-request/${requestId}`, {
+        method: 'PUT',
+        body: { action }
+      });
+      alert(response.message || `Request ${action}d successfully!`);
+      // Refresh telemetry feed by calling fetchDashboard again
+      const data = await apiFetch('/student/dashboard');
+      setActivities(data.recentActivity || []);
+      setConnections(data.teamMembers || []);
+    } catch (error) {
+      alert(error.message || `Failed to ${action} request`);
+    }
   };
 
   if (loading || !user) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem', color: '#666' }}>Loading dashboard...</div>;
@@ -353,15 +374,32 @@ const Home = () => {
                   </div>
                 </div>
               ) : (
-                activities.map(activity => (
-                  <div key={activity.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                    <div style={{ flex: 1 }}>
-                      <strong style={{ color: '#111827', display: 'block', marginBottom: '0.25rem' }}>{activity.action_type.replace(/_/g, ' ').toUpperCase()}</strong>
-                      <p style={{ margin: '0 0 0.25rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{activity.description}</p>
-                      <small style={{ color: '#9ca3af' }}>{new Date(activity.created_at).toLocaleDateString()}</small>
+                activities.map(activity => {
+                  let text = activity.description;
+                  let reqId = null;
+                  if (activity.action_type === 'request_entry' && text.includes('|REQ_ID:')) {
+                    const parts = text.split('|REQ_ID:');
+                    text = parts[0];
+                    reqId = parts[1];
+                  }
+                  
+                  return (
+                    <div key={activity.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: '#111827', display: 'block', marginBottom: '0.25rem' }}>{activity.action_type.replace(/_/g, ' ').toUpperCase()}</strong>
+                        <p style={{ margin: '0 0 0.25rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{text}</p>
+                        <small style={{ color: '#9ca3af' }}>{new Date(activity.created_at).toLocaleDateString()}</small>
+                        
+                        {reqId && (
+                          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                            <button onClick={() => handleRequest(reqId, 'approve')} style={{ padding: '0.4rem 0.8rem', border: 'none', borderRadius: '6px', background: '#10b981', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Accept</button>
+                            <button onClick={() => handleRequest(reqId, 'reject')} style={{ padding: '0.4rem 0.8rem', border: 'none', borderRadius: '6px', background: '#ef4444', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Reject</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

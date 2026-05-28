@@ -38,14 +38,20 @@ if (process.env.DATABASE_URL) {
     if (err) {
       console.error('DB connection error:', err.message);
     } else {
-      console.log('Connected to PostgreSQL Database');
-      
-      // Auto-migrate team project_name and github_repo_url
+      // Auto-migrate schema updates
       client.query(`
         ALTER TABLE teams ADD COLUMN IF NOT EXISTS project_name VARCHAR(150) DEFAULT 'Unknown Project';
         ALTER TABLE teams ADD COLUMN IF NOT EXISTS github_repo_url VARCHAR(255);
+        CREATE TABLE IF NOT EXISTS team_requests (
+            id SERIAL PRIMARY KEY,
+            team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+            student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(team_id, student_id)
+        );
       `)
-        .then(() => console.log('Auto-migration: verified teams schema columns'))
+        .then(() => console.log('Auto-migration: verified schema tables and columns'))
         .catch(migrateErr => console.error('Auto-migration error:', migrateErr.message))
         .finally(() => release());
     }

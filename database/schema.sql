@@ -48,6 +48,16 @@ CREATE TABLE team_members (
     UNIQUE(team_id, user_id)
 );
 
+-- Team Requests
+CREATE TABLE team_requests (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+    student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, student_id)
+);
+
 -- Projects table
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
