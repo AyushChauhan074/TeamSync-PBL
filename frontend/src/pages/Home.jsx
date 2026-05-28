@@ -40,7 +40,7 @@ const Home = () => {
       try {
         // Fetch all required data in parallel
         const [usersRes, teamsRes, statsRes, connectionsRes, activitiesRes] = await Promise.all([
-          apiFetch('/users'),
+          apiFetch('/users/students'),
           apiFetch('/teams'),
           apiFetch(`/users/${parsedUser.id}/stats`),
           apiFetch('/student/connections'),

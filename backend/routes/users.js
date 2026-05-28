@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const offset = (page - 1) * limit;
 
     const query = `
-      SELECT id, roll_number, name, branch, year, github_username, bio, skills, interests 
+      SELECT id, roll_number, name, role, branch, year, github_username, bio, skills, interests 
       FROM users 
       WHERE is_active = true 
       ORDER BY id 
@@ -21,6 +21,32 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Get all users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Get all students (for Discover People)
+router.get('/students', async (req, res) => {
+  try {
+    const { search } = req.query;
+    let query = `
+      SELECT id, name, roll_number, role, branch, is_active, github_username, bio, skills, interests 
+      FROM users 
+      WHERE role = 'student' AND is_active = true
+    `;
+    const params = [];
+
+    if (search) {
+      query += ` AND (LOWER(name) LIKE $1 OR LOWER(roll_number) LIKE $1)`;
+      params.push(`%${search.toLowerCase()}%`);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT 50`;
+
+    const result = await pool.query(query, params);
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('Get students error:', error);
+    res.status(500).json({ error: 'Failed to fetch students' });
   }
 });
 
