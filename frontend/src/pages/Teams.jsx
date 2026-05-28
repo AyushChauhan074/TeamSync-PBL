@@ -821,22 +821,28 @@ const Teams = () => {
                         <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.8rem', fontWeight: 'bold', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>{teamMembers.length}/{selectedTeam.max_members}</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                        {teamMembers.map((member, index) => {
-                          const isLeader = member.role === 'leader' || selectedTeam.creator_id === member.id;
-                          return (
-                            <div key={member.id || index} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'white', padding: '0.75rem', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                              <div style={{ width: '38px', height: '38px', background: isLeader ? 'linear-gradient(135deg, #fbbf24, #d97706)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                                {member.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                        {teamMembers.length === 0 ? (
+                          <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                            Waiting for approved teammates to join...
+                          </div>
+                        ) : (
+                          teamMembers.map((member, index) => {
+                            const isLeader = member.role === 'leader' || selectedTeam.creator_id === member.id;
+                            return (
+                              <div key={member.id || index} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'white', padding: '0.75rem', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                                <div style={{ width: '38px', height: '38px', background: isLeader ? 'linear-gradient(135deg, #fbbf24, #d97706)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                  {member.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: '600', color: '#1e293b', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name}</div>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.25rem 0.5rem', borderRadius: '6px', background: isLeader ? '#fef3c7' : '#eff6ff', color: isLeader ? '#b45309' : '#1d4ed8' }}>
+                                  {isLeader ? 'Leader' : 'Member'}
+                                </div>
                               </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: '600', color: '#1e293b', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name}</div>
-                              </div>
-                              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.25rem 0.5rem', borderRadius: '6px', background: isLeader ? '#fef3c7' : '#eff6ff', color: isLeader ? '#b45309' : '#1d4ed8' }}>
-                                {isLeader ? 'Leader' : 'Member'}
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   </div>
