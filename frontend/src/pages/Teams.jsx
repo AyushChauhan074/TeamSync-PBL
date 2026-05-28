@@ -105,8 +105,7 @@ const Teams = () => {
           projectName: newTeam.projectName,
           description: newTeam.description,
           maxMembers: parseInt(newTeam.maxMembers),
-          requiredSkills: newTeam.skills,
-          createdBy: user.userId
+          requiredSkills: newTeam.skills
         }
       });
       

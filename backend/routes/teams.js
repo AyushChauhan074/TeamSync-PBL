@@ -72,17 +72,18 @@ router.get('/my-teams/:userId', async (req, res) => {
 router.post('/', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { name, projectName, description, maxMembers, requiredSkills, createdBy } = req.body;
+    const { name, projectName, description, maxMembers, requiredSkills } = req.body;
+    const createdBy = req.user?.userId || req.user?.id;
     
     // Input validation
+    if (!createdBy) {
+      return res.status(401).json({ error: 'Unauthorized: Creator ID is missing from session.' });
+    }
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Team name is required.' });
     }
     if (!projectName || !projectName.trim()) {
       return res.status(400).json({ error: 'Project name is required.' });
-    }
-    if (!createdBy) {
-      return res.status(400).json({ error: 'Creator ID is required.' });
     }
 
     // Global Admin Constraint Enforcement (Max 10 per system rules)
