@@ -16,20 +16,15 @@ const Home = () => {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [activeTab, setActiveTab] = useState('discover');
+  const [discoveryMode, setDiscoveryMode] = useState('people');
+  const [connections, setConnections] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState({});
   const navigate = useNavigate();
-
-  // Mock friends/connections (Keep mocked for now as it requires complex relational schema)
-  const mockConnections = [
-    { id: 1, name: 'Deepali Chauhan', avatar: 'DC', status: 'online' },
-    { id: 2, name: 'Sidh Khurana', avatar: 'SK', status: 'offline' },
-    { id: 3, name: 'Ayush Chauhan', avatar: 'AC', status: 'online' }
-  ];
 
   useEffect(() => {
     const initData = async () => {
@@ -44,15 +39,19 @@ const Home = () => {
 
       try {
         // Fetch all required data in parallel
-        const [usersRes, teamsRes, statsRes] = await Promise.all([
+        const [usersRes, teamsRes, statsRes, connectionsRes, activitiesRes] = await Promise.all([
           apiFetch('/users'),
           apiFetch('/teams'),
-          apiFetch(`/users/${parsedUser.userId}/stats`)
+          apiFetch(`/users/${parsedUser.userId}/stats`),
+          apiFetch('/student/connections'),
+          apiFetch('/student/recent-activity')
         ]);
 
         setUsers(usersRes.users || []);
         setTeams(teamsRes.teams || []);
         setUserStats(statsRes || {});
+        setConnections(connectionsRes.connections || []);
+        setActivities(activitiesRes.activities || []);
       } catch (error) {
         console.error("Failed to fetch home data:", error);
       } finally {
@@ -66,18 +65,16 @@ const Home = () => {
   const handleSearch = (query) => {
     setSearchQuery(query);
     if (query.trim()) {
-      if (activeTab === 'discover') {
+      if (discoveryMode === 'people') {
         const results = users.filter(u => 
           u.name?.toLowerCase().includes(query.toLowerCase()) ||
-          u.roll_number?.includes(query.toUpperCase()) ||
-          (u.skills && u.skills.some(skill => skill.toLowerCase().includes(query.toLowerCase())))
+          u.roll_number?.toLowerCase().includes(query.toLowerCase())
         );
         setSearchResults(results);
       } else {
         const results = teams.filter(t => 
           t.name?.toLowerCase().includes(query.toLowerCase()) ||
-          t.description?.toLowerCase().includes(query.toLowerCase()) ||
-          (t.required_skills && t.required_skills.some(skill => skill.toLowerCase().includes(query.toLowerCase())))
+          t.code?.toLowerCase().includes(query.toLowerCase())
         );
         setSearchResults(results);
       }
@@ -95,7 +92,7 @@ const Home = () => {
   };
 
   const sendMessage = (userId) => {
-    const friend = mockConnections.find(f => f.id === userId) || users.find(u => u.id === userId);
+    const friend = connections.find(f => f.id === userId) || users.find(u => u.id === userId);
     setSelectedChat(friend);
     setChatOpen(true);
   };
@@ -207,13 +204,13 @@ const Home = () => {
           <div style={{ marginBottom: '2rem', background: 'white', padding: '2rem', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
               <button 
-                onClick={() => { setActiveTab('discover'); setSearchResults([]); setSearchQuery(''); }}
+                onClick={() => { setDiscoveryMode('people'); setSearchResults([]); setSearchQuery(''); }}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  border: activeTab === 'discover' ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+                  border: discoveryMode === 'people' ? '2px solid #3b82f6' : '2px solid #e5e7eb',
                   borderRadius: '12px',
-                  background: activeTab === 'discover' ? '#eff6ff' : 'white',
-                  color: activeTab === 'discover' ? '#1e40af' : '#6b7280',
+                  background: discoveryMode === 'people' ? '#eff6ff' : 'white',
+                  color: discoveryMode === 'people' ? '#1e40af' : '#6b7280',
                   cursor: 'pointer',
                   fontWeight: '600',
                   fontSize: '0.95rem',
@@ -232,13 +229,13 @@ const Home = () => {
                 Discover People
               </button>
               <button 
-                onClick={() => { setActiveTab('teams'); setSearchResults([]); setSearchQuery(''); }}
+                onClick={() => { setDiscoveryMode('teams'); setSearchResults([]); setSearchQuery(''); }}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  border: activeTab === 'teams' ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+                  border: discoveryMode === 'teams' ? '2px solid #3b82f6' : '2px solid #e5e7eb',
                   borderRadius: '12px',
-                  background: activeTab === 'teams' ? '#eff6ff' : 'white',
-                  color: activeTab === 'teams' ? '#1e40af' : '#6b7280',
+                  background: discoveryMode === 'teams' ? '#eff6ff' : 'white',
+                  color: discoveryMode === 'teams' ? '#1e40af' : '#6b7280',
                   cursor: 'pointer',
                   fontWeight: '600',
                   fontSize: '0.95rem',
@@ -261,7 +258,7 @@ const Home = () => {
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
-                placeholder={activeTab === 'discover' ? "Search by name, roll number, or skills..." : "Search for teams by project or skills..."}
+                placeholder={discoveryMode === 'people' ? "Search by name or roll number..." : "Search for teams by name or join code..."}
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 style={{
@@ -271,7 +268,8 @@ const Home = () => {
                   borderRadius: '12px',
                   fontSize: '1rem',
                   outline: 'none',
-                  transition: 'border-color 0.2s ease'
+                  transition: 'border-color 0.2s ease',
+                  color: '#111827'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                 onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
@@ -288,153 +286,62 @@ const Home = () => {
               </svg>
             </div>
 
-            {/* Search Results */}
-            {searchResults.length > 0 && (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h4 style={{ color: '#111827', marginBottom: '1rem' }}>Search Results ({searchResults.length})</h4>
-                <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
-                  {activeTab === 'discover' ? (
-                    searchResults.map(person => (
-                      <div key={person.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '1rem',
-                        background: 'rgba(255,255,255,0.95)',
-                        borderRadius: '15px',
-                        color: '#333',
-                        backdropFilter: 'blur(10px)'
-                      }}>
-                        <div 
-                          onClick={() => openProfile(person)}
-                          style={{
-                            width: '60px',
-                            height: '60px',
-                            background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            marginRight: '1rem',
-                            cursor: 'pointer',
-                            fontSize: '1.2rem'
-                          }}
-                        >
-                          {person.name?.substring(0, 2).toUpperCase() || 'U'}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: '0 0 0.25rem 0', cursor: 'pointer' }} onClick={() => openProfile(person)}>{person.name}</h4>
-                          <p style={{ margin: '0 0 0.5rem 0', color: '#666' }}>{person.roll_number} • {person.branch || 'N/A'}</p>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            {person.skills && person.skills.slice(0, 3).map(skill => (
-                              <span key={skill} style={{
-                                background: 'linear-gradient(135deg, #f093fb, #f5576c)',
-                                color: 'white',
-                                padding: '0.25rem 0.75rem',
-                                borderRadius: '15px',
-                                fontSize: '0.8rem',
-                                fontWeight: '500'
-                              }}>
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button onClick={() => sendMessage(person.id)} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#3b82f6', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                            </svg>
-                          </button>
-                          <button onClick={() => addFriend(person.id)} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#10b981', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                              <circle cx="8.5" cy="7" r="4"/>
-                              <line x1="20" y1="8" x2="20" y2="14"/>
-                              <line x1="23" y1="11" x2="17" y2="11"/>
-                            </svg>
-                          </button>
-                          <button onClick={() => connectForTeam(person.id)} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#6366f1', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                            </svg>
-                          </button>
-                        </div>
+            {/* Discovery Roster Grid */}
+            <div style={{ marginTop: '1.5rem' }}>
+              <h4 style={{ color: '#111827', marginBottom: '1rem' }}>
+                {searchQuery ? `Search Results (${searchResults.length})` : (discoveryMode === 'people' ? 'Top New Students' : 'Active Project Teams')}
+              </h4>
+              <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+                {discoveryMode === 'people' ? (
+                  (searchQuery ? searchResults : [...users].reverse().slice(0, 5)).map(person => (
+                    <div key={person.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.95)', borderRadius: '15px', color: '#333', backdropFilter: 'blur(10px)', border: '1px solid #e5e7eb' }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 0.25rem 0', cursor: 'pointer', color: '#111827' }} onClick={() => openProfile(person)}>{person.name}</h4>
+                        <p style={{ margin: '0', color: '#4b5563' }}>{person.roll_number}</p>
                       </div>
-                    ))
-                  ) : (
-                    searchResults.map(team => (
-                      <div key={team.id} style={{
-                        padding: '1.5rem',
-                        background: 'rgba(255,255,255,0.95)',
-                        borderRadius: '15px',
-                        color: '#333',
-                        backdropFilter: 'blur(10px)'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                          <div>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: '#333' }}>{team.name}</h4>
-                            <p style={{ margin: '0 0 0.5rem 0', color: '#666', fontWeight: '500' }}>{team.description || 'No description'}</p>
-                          </div>
-                          <span style={{ background: '#17a2b8', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '15px', fontSize: '0.8rem' }}>
-                            {team.current_members || 0}/{team.max_members || 6} members
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            {team.required_skills && team.required_skills.map(skill => (
-                              <span key={skill} style={{
-                                background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                                color: 'white',
-                                padding: '0.25rem 0.75rem',
-                                borderRadius: '15px',
-                                fontSize: '0.8rem'
-                              }}>
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                          <button 
-                            onClick={() => joinTeam(team.id)}
-                            style={{
-                              padding: '0.75rem 1.5rem',
-                              border: 'none',
-                              borderRadius: '25px',
-                              background: 'linear-gradient(135deg, #f093fb, #f5576c)',
-                              color: 'white',
-                              cursor: 'pointer',
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            Join Team
-                          </button>
-                        </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={() => sendMessage(person.id)} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#3b82f6', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>Chat</button>
+                        <button onClick={() => connectForTeam(person.id)} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#10b981', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>Connect</button>
                       </div>
-                    ))
-                  )}
-                </div>
+                    </div>
+                  ))
+                ) : (
+                  (searchQuery ? searchResults : [...teams].slice(0, 5)).map(team => (
+                    <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.95)', borderRadius: '15px', color: '#333', backdropFilter: 'blur(10px)', border: '1px solid #e5e7eb' }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 0.25rem 0', color: '#111827' }}>{team.name}</h4>
+                        <p style={{ margin: '0', color: '#4b5563' }}>Code: {team.code || 'N/A'}</p>
+                      </div>
+                      <button onClick={() => joinTeam(team.id)} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: '8px', background: '#f5576c', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>Join Team</button>
+                    </div>
+                  ))
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Recent Activity */}
           <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
             <h3 style={{ color: '#111827', margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: '700' }}>Recent Activity</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                <div style={{ width: '48px', height: '48px', background: '#3b82f6', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '1rem' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                  </svg>
+              {activities.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ color: '#111827', display: 'block', marginBottom: '0.25rem' }}>No recent activity</strong>
+                    <p style={{ margin: '0 0 0.25rem 0', color: '#6b7280', fontSize: '0.9rem' }}>Start collaborating to see your activity here</p>
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <strong style={{ color: '#111827', display: 'block', marginBottom: '0.25rem' }}>No recent activity</strong>
-                  <p style={{ margin: '0 0 0.25rem 0', color: '#6b7280', fontSize: '0.9rem' }}>Start collaborating to see your activity here</p>
-                  <small style={{ color: '#9ca3af' }}>Just now</small>
-                </div>
-              </div>
+              ) : (
+                activities.map(activity => (
+                  <div key={activity.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ color: '#111827', display: 'block', marginBottom: '0.25rem' }}>{activity.action_type.replace(/_/g, ' ').toUpperCase()}</strong>
+                      <p style={{ margin: '0 0 0.25rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{activity.description}</p>
+                      <small style={{ color: '#9ca3af' }}>{new Date(activity.created_at).toLocaleDateString()}</small>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -452,7 +359,7 @@ const Home = () => {
               My Connections
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {mockConnections.map(friend => (
+              {connections.slice(0, 5).map(friend => (
                 <div key={friend.id} style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -486,7 +393,7 @@ const Home = () => {
                       fontSize: '1rem',
                       boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
                     }}>
-                      {friend.avatar}
+                      {friend.name?.substring(0,2).toUpperCase() || 'U'}
                     </div>
                     <div style={{ 
                       position: 'absolute', 
@@ -494,7 +401,7 @@ const Home = () => {
                       right: '2px', 
                       width: '12px', 
                       height: '12px', 
-                      background: friend.status === 'online' ? '#10b981' : '#9ca3af', 
+                      background: friend.is_active ? '#10b981' : '#9ca3af', 
                       borderRadius: '50%', 
                       border: '2px solid white',
                       boxShadow: '0 0 0 2px rgba(255,255,255,0.8)'
@@ -506,15 +413,15 @@ const Home = () => {
                       <div style={{ 
                         width: '6px', 
                         height: '6px', 
-                        background: friend.status === 'online' ? '#10b981' : '#9ca3af', 
+                        background: friend.is_active ? '#10b981' : '#9ca3af', 
                         borderRadius: '50%'
                       }}></div>
                       <small style={{ 
-                        color: friend.status === 'online' ? '#10b981' : '#9ca3af',
+                        color: friend.is_active ? '#10b981' : '#9ca3af',
                         fontWeight: '500',
                         fontSize: '0.85rem',
                         textTransform: 'capitalize'
-                      }}>{friend.status}</small>
+                      }}>{friend.is_active ? 'online' : 'offline'}</small>
                     </div>
                   </div>
                   <button 
@@ -550,56 +457,6 @@ const Home = () => {
                   </button>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <h3 style={{ color: '#111827', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              Quick Stats
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: '40px', height: '40px', background: '#3b82f6', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                  </div>
-                  <span style={{ color: '#1e40af', fontWeight: '600' }}>Teams Joined</span>
-                </div>
-                <strong style={{ color: '#1e40af', fontSize: '1.5rem', fontWeight: '700' }}>3</strong>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: '40px', height: '40px', background: '#10b981', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                    </svg>
-                  </div>
-                  <span style={{ color: '#047857', fontWeight: '600' }}>Projects</span>
-                </div>
-                <strong style={{ color: '#047857', fontSize: '1.5rem', fontWeight: '700' }}>5</strong>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', borderRadius: '12px', border: '1px solid #fcd34d' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: '40px', height: '40px', background: '#f59e0b', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                  </div>
-                  <span style={{ color: '#b45309', fontWeight: '600' }}>Connections</span>
-                </div>
-                <strong style={{ color: '#b45309', fontSize: '1.5rem', fontWeight: '700' }}>12</strong>
-              </div>
             </div>
           </div>
         </div>

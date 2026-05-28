@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { logActivity } = require('../utils/logger');
 
 module.exports = (pool) => {
 
@@ -107,6 +108,9 @@ router.post('/', async (req, res) => {
       [teamId, createdBy, 'leader']
     );
     
+    // Log the activity
+    await logActivity(pool, createdBy, 'create_group', `You created team ${result.rows[0].name}`);
+
     res.status(201).json({ 
       success: true, 
       team: result.rows[0] 
@@ -162,6 +166,10 @@ router.post('/:code/join', async (req, res) => {
     );
     
     await client.query('COMMIT');
+    
+    // Log the activity
+    await logActivity(pool, userId, 'join_squad', `You joined team ${teamResult.rows[0].name}`);
+
     res.json({ success: true, message: 'Successfully joined team' });
     
   } catch (error) {

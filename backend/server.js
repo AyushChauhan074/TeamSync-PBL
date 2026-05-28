@@ -65,6 +65,7 @@ const teamRoutes = require('./routes/teams')(pool);
 const projectRoutes = require('./routes/projects')(pool);
 const messageRoutes = require('./routes/messages')(pool);
 const adminRoutes = require('./routes/admin')(pool);
+const studentRoutes = require('./routes/student')(pool);
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -73,6 +74,7 @@ app.use('/api/v1/teams', authMiddleware, maintenanceGate(pool), teamRoutes);
 app.use('/api/v1/projects', authMiddleware, maintenanceGate(pool), projectRoutes);
 app.use('/api/v1/messages', authMiddleware, maintenanceGate(pool), messageRoutes);
 app.use('/api/v1/admin', authMiddleware, adminOnly, adminRoutes);
+app.use('/api/v1/student', authMiddleware, maintenanceGate(pool), studentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -180,6 +182,17 @@ io.on('connection', (socket) => {
     await pool.query(`
       UPDATE users SET faculty_id = roll_number 
       WHERE role = 'faculty' AND faculty_id IS NULL;
+    `);
+
+    // Create activities table for telemetry logger
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS activities (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          action_type VARCHAR(50) NOT NULL,
+          description TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Create configurations table for system settings
