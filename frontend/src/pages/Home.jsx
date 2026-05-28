@@ -62,22 +62,43 @@ const Home = () => {
     initData();
   }, [navigate]);
 
+  // Debounced backend search
   const handleSearch = (query) => {
     setSearchQuery(query);
-    if (query.trim()) {
+    
+    // Clear previous timeout if user keeps typing
+    if (window.searchTimeout) {
+      clearTimeout(window.searchTimeout);
+    }
+    
+    if (query.trim().length > 0) {
+      // Local optimistic filter for immediate feedback
       if (discoveryMode === 'people') {
-        const results = users.filter(u => 
+        setSearchResults(users.filter(u => 
           u.name?.toLowerCase().includes(query.toLowerCase()) ||
           u.roll_number?.toLowerCase().includes(query.toLowerCase())
-        );
-        setSearchResults(results);
+        ));
       } else {
-        const results = teams.filter(t => 
+        setSearchResults(teams.filter(t => 
           t.name?.toLowerCase().includes(query.toLowerCase()) ||
           t.code?.toLowerCase().includes(query.toLowerCase())
-        );
-        setSearchResults(results);
+        ));
       }
+
+      // Backend search after 300ms pause
+      window.searchTimeout = setTimeout(async () => {
+        try {
+          if (discoveryMode === 'people') {
+            const res = await apiFetch(`/users/students?search=${encodeURIComponent(query.trim())}`);
+            setSearchResults(res.users || []);
+          } else {
+            const res = await apiFetch(`/teams?search=${encodeURIComponent(query.trim())}`);
+            setSearchResults(res.teams || []);
+          }
+        } catch (error) {
+          console.error("Search failed:", error);
+        }
+      }, 300);
     } else {
       setSearchResults([]);
     }
