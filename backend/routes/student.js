@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 module.exports = (pool) => {
 
   // GET /api/v1/student/connections
-  router.get('/connections', auth, async (req, res) => {
+  router.get('/connections', authMiddleware, async (req, res) => {
     try {
       const userId = req.user.userId;
 
@@ -28,7 +28,7 @@ module.exports = (pool) => {
   });
 
   // GET /api/v1/student/recent-activity
-  router.get('/recent-activity', auth, async (req, res) => {
+  router.get('/recent-activity', authMiddleware, async (req, res) => {
     try {
       const userId = req.user.userId;
 
