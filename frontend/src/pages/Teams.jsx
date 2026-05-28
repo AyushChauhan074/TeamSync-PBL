@@ -759,33 +759,104 @@ const Teams = () => {
 
             {/* Overview Tab */}
             {activeTab === 'overview' && (
-              <div>
-                <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', borderLeft: '4px solid #3498db' }}>
-                  <h3 style={{ marginTop: 0, color: '#2c3e50', fontSize: '1.3rem' }}>{selectedTeam.project_name || 'No Project Assigned'}</h3>
-                  <p style={{ color: '#555', lineHeight: '1.6', fontSize: '1rem' }}>{selectedTeam.description}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                <style>
+                {`
+                  .modal-overview-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 1.5rem;
+                  }
+                  @media (min-width: 1024px) {
+                    .modal-overview-grid {
+                      grid-template-columns: 1.8fr 1fr;
+                    }
+                  }
+                `}
+                </style>
+                
+                <div className="modal-overview-grid">
+                  {/* Left Column - Main Info */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {/* Glassmorphic Project Info Card */}
+                    <div style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.05)' }}>
+                      <h3 style={{ margin: '0 0 1rem 0', color: '#111827 !important', fontSize: '1.5rem', fontWeight: 'bold' }}>{selectedTeam.project_name || 'No Project Assigned'}</h3>
+                      <p style={{ color: '#4b5563', lineHeight: '1.6', fontSize: '1.05rem', margin: 0 }}>{selectedTeam.description}</p>
+                    </div>
+                    
+                    {/* Tech Stack Badges */}
+                    <div>
+                      <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '1.1rem' }}>Tech Badges</h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {(selectedTeam.required_skills?.length > 0 ? selectedTeam.required_skills : ['PBL Project', 'Git Tracked']).map(skill => (
+                          <span key={skill} style={{ background: '#e0e7ff', color: '#4338ca', padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: '600' }}>
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
-                    <div style={{ background: '#ecf0f1', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem', color: '#34495e', fontWeight: 'bold' }}>
-                      Token Code: <span style={{ fontFamily: 'monospace', fontSize: '1.1rem', letterSpacing: '2px', color: '#2980b9' }}>{selectedTeam.code}</span>
+                  {/* Right Column - Sidebar */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    {/* Token Code Box */}
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Team Join Token</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '1.2rem', color: '#0f172a', fontWeight: 'bold', letterSpacing: '2px' }}>{selectedTeam.code}</span>
+                        <button onClick={() => navigator.clipboard.writeText(selectedTeam.code)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Copy to Clipboard">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Active Roster Hub */}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <h4 style={{ margin: 0, color: '#333', fontSize: '1.1rem' }}>Active Roster</h4>
+                        <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.8rem', fontWeight: 'bold', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>{teamMembers.length}/{selectedTeam.max_members}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                        {teamMembers.map((member, index) => {
+                          const isLeader = member.role === 'leader' || selectedTeam.creator_id === member.id;
+                          return (
+                            <div key={member.id || index} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'white', padding: '0.75rem', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                              <div style={{ width: '38px', height: '38px', background: isLeader ? 'linear-gradient(135deg, #fbbf24, #d97706)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                {member.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: '600', color: '#1e293b', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name}</div>
+                              </div>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '0.25rem 0.5rem', borderRadius: '6px', background: isLeader ? '#fef3c7' : '#eff6ff', color: isLeader ? '#b45309' : '#1d4ed8' }}>
+                                {isLeader ? 'Leader' : 'Member'}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>Active Roster ({teamMembers.length}/{selectedTeam.max_members})</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                  {teamMembers.map((member, index) => (
-                    <div key={member.id || index} style={{ display: 'flex', alignItems: 'center', padding: '1rem', background: '#ffffff', border: '1px solid #ecf0f1', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
-                      <div style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #3498db, #2980b9)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', marginRight: '1rem', fontSize: '1.1rem' }}>
-                        {member.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 'bold', color: '#333' }}>{member.name}</div>
-                        <div style={{ color: '#7f8c8d', fontSize: '0.85rem', marginTop: '0.2rem' }}>
-                          {member.roll_number} • {member.role === 'leader' || selectedTeam.creator_id === member.id ? 'Team Leader' : 'Member'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                
+                {/* Bottom Row - Milestone Progress Tracker */}
+                <div style={{ marginTop: '0.5rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4 style={{ margin: 0, color: '#334155', fontSize: '1.05rem' }}>Project Milestone Phase</h4>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#3b82f6' }}>{selectedTeam.status === 'forming' ? 'Planning Phase' : (selectedTeam.status === 'completed' ? 'Evaluation Phase' : 'Development Phase')}</span>
+                  </div>
+                  
+                  <div style={{ position: 'relative', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: selectedTeam.status === 'forming' ? '33%' : (selectedTeam.status === 'active' ? '66%' : '100%'), background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '4px', transition: 'width 0.5s ease' }}></div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>
+                    <span style={{ color: selectedTeam.status === 'forming' ? '#3b82f6' : '#94a3b8' }}>Planning & Ideation</span>
+                    <span style={{ color: selectedTeam.status === 'active' ? '#3b82f6' : '#94a3b8' }}>Development</span>
+                    <span style={{ color: selectedTeam.status === 'completed' ? '#10b981' : '#94a3b8' }}>Evaluation & Final</span>
+                  </div>
                 </div>
               </div>
             )}
