@@ -171,6 +171,17 @@ io.on('connection', (socket) => {
       WHERE role = 'faculty' AND designation IS NULL;
     `);
 
+    // Add faculty_id column for polymorphic mapping and backfill
+    await pool.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS faculty_id VARCHAR(50) UNIQUE;
+    `);
+
+    await pool.query(`
+      UPDATE users SET faculty_id = roll_number 
+      WHERE role = 'faculty' AND faculty_id IS NULL;
+    `);
+
     // Create configurations table for system settings
     await pool.query(`
       CREATE TABLE IF NOT EXISTS configurations (

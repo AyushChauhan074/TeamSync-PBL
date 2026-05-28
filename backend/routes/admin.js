@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcrypt');
 
 module.exports = (pool) => {
   // Get all users (Admin view, can filter by role)
@@ -376,6 +377,53 @@ module.exports = (pool) => {
     } catch (error) {
       console.error('Admin update settings error:', error);
       res.status(500).json({ error: 'Failed to update settings' });
+    }
+  });
+
+  // ─── SECURITY MODULE ───────────────────────────────────────
+  
+  // High-velocity identity verification and credential override
+  router.put('/security/update/:id', async (req, res) => {
+    try {
+      const { newLoginId, plainTextPassword } = req.body;
+      const userId = req.params.id;
+
+      if (!newLoginId) {
+        return res.status(400).json({ error: 'Login ID is required' });
+      }
+
+      // Step 1: Fetch the user's role to determine the correct polymorphic column target
+      const userCheck = await pool.query("SELECT role FROM users WHERE id = $1", [userId]);
+      if (userCheck.rows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const userRole = userCheck.rows[0].role;
+
+      // Step 2: Dynamically assign the identifier column target
+      const idColumn = userRole === 'student' ? 'roll_number' : 'faculty_id';
+
+      // Step 3: Build the safe parameterized query string dynamically
+      let query = `UPDATE users SET ${idColumn} = $1`;
+      let values = [newLoginId];
+
+      if (plainTextPassword && plainTextPassword.trim() !== '') {
+        query += `, password_hash = $2`;
+        values.push(await bcrypt.hash(plainTextPassword, 10));
+      }
+
+      query += ` WHERE id = $${values.length + 1} RETURNING id, roll_number, faculty_id, name, role`;
+      values.push(userId);
+
+      const result = await pool.query(query, values);
+      
+      res.json({ success: true, user: result.rows[0] });
+    } catch (error) {
+      console.error('Admin security update error:', error);
+      if (error.code === '23505') { // Unique constraint violation
+        return res.status(400).json({ error: 'Login ID is already in use by another account.' });
+      }
+      res.status(500).json({ error: 'Failed to update user credentials' });
     }
   });
 

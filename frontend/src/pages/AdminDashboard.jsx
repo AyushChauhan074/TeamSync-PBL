@@ -54,6 +54,57 @@ const AdminDashboard = () => {
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
 
+  // Security Module State
+  const [securityViewMode, setSecurityViewMode] = useState('student');
+  const [securitySearchQuery, setSecuritySearchQuery] = useState('');
+  const [selectedSecurityUser, setSelectedSecurityUser] = useState(null);
+  const [securityFormData, setSecurityFormData] = useState({ newLoginId: '', plainTextPassword: '' });
+
+  const handleSelectSecurityUser = (user) => {
+    setSelectedSecurityUser(user);
+    setSecurityFormData({ newLoginId: user.roll_number || user.faculty_id, plainTextPassword: '' });
+  };
+
+  const handleSecuritySubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedSecurityUser) return;
+
+    try {
+      const response = await fetch(import.meta.env.VITE_API_URL + `/api/v1/admin/security/update/${selectedSecurityUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          newLoginId: securityFormData.newLoginId,
+          plainTextPassword: securityFormData.plainTextPassword
+        })
+      });
+
+      if (response.ok) {
+        const { user: updatedUser } = await response.json();
+        
+        // Update local state arrays based on role
+        if (updatedUser.role === 'student') {
+          setStudents(students.map(s => s.id === updatedUser.id ? { ...s, roll_number: updatedUser.roll_number } : s));
+        } else {
+          setFaculty(faculty.map(f => f.id === updatedUser.id ? { ...f, faculty_id: updatedUser.faculty_id, roll_number: updatedUser.roll_number } : f));
+        }
+        
+        showToast('Security database override complete: Credentials updated successfully.', 'success');
+        setSelectedSecurityUser(null);
+        setSecurityFormData({ newLoginId: '', plainTextPassword: '' });
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to update credentials', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating security credentials:', error);
+      showToast('Network error: Failed to update database', 'error');
+    }
+  };
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -539,6 +590,22 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
+  // Security Module: Local Search Filtering
+  const filteredSecurityUsers = React.useMemo(() => {
+    const dataset = securityViewMode === 'student' ? students : faculty;
+    const query = securitySearchQuery.toLowerCase().trim();
+    
+    if (!query) return dataset;
+    
+    return dataset.filter(user => {
+      const nameMatch = user.name?.toLowerCase().includes(query);
+      const idMatch = securityViewMode === 'student' 
+        ? user.roll_number?.toLowerCase().includes(query)
+        : user.faculty_id?.toLowerCase().includes(query);
+      return nameMatch || idMatch;
+    });
+  }, [students, faculty, securityViewMode, securitySearchQuery]);
+
   if (!user || loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', color: '#1e3a8a' }}>Loading System Data...</div>;
 
   return (
@@ -647,7 +714,8 @@ const AdminDashboard = () => {
             { key: 'students', label: 'Students', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg> },
             { key: 'faculty', label: 'Faculty', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
             { key: 'teams', label: 'Teams', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-            { key: 'settings', label: 'Settings', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/></svg> }
+            { key: 'settings', label: 'Settings', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/></svg> },
+            { key: 'security', label: 'Security', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> }
           ].map(({ key, label, icon }) => (
             <button
               key={key}
@@ -1382,6 +1450,132 @@ const AdminDashboard = () => {
                 </div>
 
               </div>
+            </div>
+          </div>
+        )}
+        {/* Security Section */}
+        {activeSection === 'security' && (
+          <div className="security-container">
+            <h2 style={{ marginBottom: '2rem', color: '#1f2937', fontSize: '1.75rem', fontWeight: '800' }}>Security Management</h2>
+            
+            <div className="security-segment-group">
+              <button 
+                className={`security-segment-btn ${securityViewMode === 'student' ? 'active' : ''}`}
+                onClick={() => {
+                  setSecurityViewMode('student');
+                  setSelectedSecurityUser(null);
+                  setSecuritySearchQuery('');
+                }}
+              >
+                Student Credentials
+              </button>
+              <button 
+                className={`security-segment-btn ${securityViewMode === 'faculty' ? 'active' : ''}`}
+                onClick={() => {
+                  setSecurityViewMode('faculty');
+                  setSelectedSecurityUser(null);
+                  setSecuritySearchQuery('');
+                }}
+              >
+                Faculty Credentials
+              </button>
+            </div>
+
+            <div className="security-search-bar" style={{ marginBottom: '2rem' }}>
+              <input 
+                type="text" 
+                placeholder={securityViewMode === 'student' ? "Search students by name or roll number..." : "Search faculty by name or ID..."}
+                value={securitySearchQuery}
+                onChange={(e) => setSecuritySearchQuery(e.target.value)}
+                className="settings-input"
+                style={{ width: '100%', maxWidth: '600px' }}
+              />
+            </div>
+
+            <div className="security-split-layout">
+              {/* Left Column: Roster Table */}
+              <div className="security-table-container settings-card" style={{ padding: '1rem', overflowX: 'auto' }}>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ textAlign: 'left', padding: '1rem', color: '#4b5563' }}>{securityViewMode === 'student' ? 'Student Name' : 'Faculty Name'}</th>
+                      <th style={{ textAlign: 'left', padding: '1rem', color: '#4b5563' }}>{securityViewMode === 'student' ? 'Official Roll Number' : 'Official Faculty ID'}</th>
+                      <th style={{ textAlign: 'right', padding: '1rem', color: '#4b5563' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSecurityUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                          No users found matching your search.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSecurityUsers.map(user => (
+                        <tr key={user.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '1rem', color: '#111827', fontWeight: '500' }}>{user.name}</td>
+                          <td style={{ padding: '1rem', color: '#4b5563' }}>{securityViewMode === 'student' ? user.roll_number : user.faculty_id}</td>
+                          <td style={{ padding: '1rem', textAlign: 'right' }}>
+                            <button 
+                              onClick={() => handleSelectSecurityUser(user)}
+                              className="btn-primary"
+                              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                            >
+                              Manage
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Right Column: Edit Panel */}
+              {selectedSecurityUser && (
+                <div className="security-edit-panel settings-card" style={{ alignSelf: 'start' }}>
+                  <h3 className="settings-card-title">Credential Override</h3>
+                  <p className="settings-card-subtitle">Managing {selectedSecurityUser.name}</p>
+                  
+                  <form onSubmit={handleSecuritySubmit}>
+                    <div className="settings-form-group">
+                      <label className="settings-form-label">User ID / Login ID</label>
+                      <input 
+                        type="text" 
+                        required
+                        className="settings-input security-input"
+                        value={securityFormData.newLoginId}
+                        onChange={(e) => setSecurityFormData({...securityFormData, newLoginId: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="settings-form-group">
+                      <label className="settings-form-label">Force New Password</label>
+                      <input 
+                        type="text" 
+                        className="settings-input security-input"
+                        placeholder="Leave blank to keep current password"
+                        value={securityFormData.plainTextPassword}
+                        onChange={(e) => setSecurityFormData({...securityFormData, plainTextPassword: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="settings-save-bar" style={{ marginTop: '2rem' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedSecurityUser(null)} 
+                        className="btn-secondary" 
+                        style={{ marginRight: '1rem' }}
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="settings-save-btn">
+                        Commit Override
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         )}
