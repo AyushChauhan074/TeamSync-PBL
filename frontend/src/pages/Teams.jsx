@@ -23,7 +23,8 @@ const Teams = () => {
       setUser(parsedUser);
 
       try {
-        const data = await apiFetch(`/teams/my-teams/${parsedUser.userId}`);
+        const userId = parsedUser.id || parsedUser.userId;
+        const data = await apiFetch(`/teams/my-teams/${userId}`);
         setTeams(data.teams || []);
       } catch (error) {
         console.error('Failed to fetch teams:', error);
@@ -75,7 +76,7 @@ const Teams = () => {
           const data = await apiFetch(`/messages/team/${selectedTeam.id}`);
           const formattedMessages = data.messages.map(m => ({
             id: m.id,
-            sender: m.sender_id === user.userId ? 'You' : m.sender_name,
+            sender: m.sender_id === (user.userId || user.id) ? 'You' : m.sender_name,
             message: m.message_text,
             time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }));
@@ -155,7 +156,7 @@ const Teams = () => {
       // Emit to server
       socketRef.current.emit('sendMessage', {
         teamId: selectedTeam.id,
-        senderId: user.userId,
+        senderId: user.userId || user.id,
         senderName: user.name,
         messageText: chatMessage.trim()
       });
