@@ -28,15 +28,17 @@ router.get('/', async (req, res) => {
 router.get('/students', async (req, res) => {
   try {
     const { search } = req.query;
+    const currentUserId = req.user?.userId || req.user?.id;
+
     let query = `
       SELECT id, name, roll_number, role, branch, is_active, github_username, bio, skills, interests 
       FROM users 
-      WHERE role = 'student' AND is_active = true
+      WHERE role = 'student' AND is_active = true AND id != $1
     `;
-    const params = [];
+    const params = [currentUserId];
 
     if (search) {
-      query += ` AND (LOWER(name) LIKE $1 OR LOWER(roll_number) LIKE $1)`;
+      query += ` AND (LOWER(name) LIKE $2 OR LOWER(roll_number) LIKE $2)`;
       params.push(`%${search.toLowerCase()}%`);
     }
 
