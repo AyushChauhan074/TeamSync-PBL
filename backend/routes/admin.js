@@ -132,17 +132,35 @@ module.exports = (pool) => {
     try {
       const { teamId } = req.params;
       
+      await pool.query('BEGIN');
+      
+      // Get associated project ID(s)
+      const projects = await pool.query('SELECT id FROM projects WHERE team_id = $1', [teamId]);
+      
+      if (projects.rows.length > 0) {
+        const projectIds = projects.rows.map(p => p.id);
+        
+        // Delete contributions referencing these projects
+        await pool.query('DELETE FROM contributions WHERE project_id = ANY($1::int[])', [projectIds]);
+        
+        // Delete the projects
+        await pool.query('DELETE FROM projects WHERE team_id = $1', [teamId]);
+      }
+      
       const result = await pool.query(
         'DELETE FROM teams WHERE id = $1 RETURNING id',
         [teamId]
       );
       
       if (result.rows.length === 0) {
+        await pool.query('ROLLBACK');
         return res.status(404).json({ error: 'Team not found' });
       }
       
+      await pool.query('COMMIT');
       res.json({ success: true, message: 'Team deleted successfully' });
     } catch (error) {
+      await pool.query('ROLLBACK');
       console.error('Admin delete team error:', error);
       res.status(500).json({ error: 'Failed to delete team' });
     }
