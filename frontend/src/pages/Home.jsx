@@ -42,7 +42,7 @@ const Home = () => {
         const [usersRes, teamsRes, statsRes, connectionsRes, activitiesRes] = await Promise.all([
           apiFetch('/users'),
           apiFetch('/teams'),
-          apiFetch(`/users/${parsedUser.userId}/stats`),
+          apiFetch(`/users/${parsedUser.id}/stats`),
           apiFetch('/student/connections'),
           apiFetch('/student/recent-activity')
         ]);
