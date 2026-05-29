@@ -24,7 +24,7 @@ module.exports = (pool) => {
           t.github_repo_url, 
           t.mentor_id, 
           t.evaluator_id,
-          (SELECT COUNT(*) FROM users u WHERE u.team_id = t.id AND u.role = 'student') AS roster_size
+          (SELECT COUNT(*) FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.team_id = t.id AND u.role = 'student') AS roster_size
         FROM teams t
         WHERE 
           t.${viewMode === 'mentor' ? 'mentor_id' : 'evaluator_id'}::text = $1::text 
@@ -71,8 +71,8 @@ module.exports = (pool) => {
       const membersQuery = `
         SELECT u.id, u.name, u.email, u.github_username, u.skills, tm.role as team_role
         FROM users u
-        LEFT JOIN team_members tm ON u.id = tm.user_id AND tm.team_id = $1
-        WHERE u.team_id = $1 AND u.role = 'student'
+        INNER JOIN team_members tm ON u.id = tm.user_id
+        WHERE tm.team_id = $1 AND u.role = 'student'
       `;
       const members = await pool.query(membersQuery, [teamId]);
 
