@@ -171,7 +171,9 @@ const FacultyDashboard = () => {
                             Review Workspace
                           </button>
                           {facultyViewMode === 'evaluator' && (
-                            <button style={{
+                            <button 
+                              onClick={() => navigate('/faculty/evaluations')}
+                              style={{
                               padding: '0.5rem 1rem',
                               border: '1px solid #10b981',
                               color: '#10b981',
