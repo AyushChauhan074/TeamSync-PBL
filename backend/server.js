@@ -43,6 +43,8 @@ if (process.env.DATABASE_URL) {
       client.query(`
         ALTER TABLE teams ADD COLUMN IF NOT EXISTS project_name VARCHAR(150) DEFAULT 'Unknown Project';
         ALTER TABLE teams ADD COLUMN IF NOT EXISTS github_repo_url VARCHAR(255);
+        ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor_id INTEGER REFERENCES users(id);
+        ALTER TABLE teams ADD COLUMN IF NOT EXISTS evaluator_id INTEGER REFERENCES users(id);
         CREATE TABLE IF NOT EXISTS messages (
             id SERIAL PRIMARY KEY,
             team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
