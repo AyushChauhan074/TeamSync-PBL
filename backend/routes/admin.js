@@ -316,12 +316,19 @@ module.exports = (pool) => {
 
       const updateQuery = `
         UPDATE teams 
-        SET mentor_id = $1, evaluator_id = $2, updated_at = CURRENT_TIMESTAMP
+        SET 
+          mentor_id = COALESCE($1, mentor_id), 
+          evaluator_id = COALESCE($2, evaluator_id),
+          updated_at = CURRENT_TIMESTAMP
         WHERE id = $3
-        RETURNING id, mentor_id, evaluator_id
+        RETURNING *;
       `;
       
-      const result = await pool.query(updateQuery, [mentorId, evaluatorId, teamId]);
+      const result = await pool.query(updateQuery, [
+        mentorId ? parseInt(mentorId) : null, 
+        evaluatorId ? parseInt(evaluatorId) : null, 
+        parseInt(teamId)
+      ]);
 
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Team not found' });

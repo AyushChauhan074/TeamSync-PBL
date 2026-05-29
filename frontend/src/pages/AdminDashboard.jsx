@@ -193,8 +193,8 @@ const AdminDashboard = () => {
       const data = await apiFetch(`/admin/teams/${selectedTeamId}/allocate`, {
         method: 'PUT',
         body: {
-          mentorId: teamFormData.mentor_id,
-          evaluatorId: teamFormData.evaluator_id
+          mentorId: Number(teamFormData.mentor_id),
+          evaluatorId: Number(teamFormData.evaluator_id)
         }
       });
 
