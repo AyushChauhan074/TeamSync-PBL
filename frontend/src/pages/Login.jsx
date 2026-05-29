@@ -82,7 +82,7 @@ const Login = () => {
             isLoggedIn: true,
             userType: 'admin'
           }));
-          localStorage.setItem('token', data.token);
+          localStorage.setItem('admin_token', data.token);
           navigate('/admin-dashboard');
         } else {
           alert(data.error || 'Admin login failed');

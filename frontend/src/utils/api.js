@@ -8,7 +8,24 @@ const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}
  */
 const getHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
-  const token = localStorage.getItem('token');
+  
+  // Pick the correct token based on the logged-in user's role.
+  // Admin sessions store their token separately so faculty/student logins never overwrite it.
+  const userData = localStorage.getItem('user');
+  let token = null;
+  if (userData) {
+    try {
+      const parsed = JSON.parse(userData);
+      if (parsed.role === 'admin' || parsed.userType === 'admin') {
+        token = localStorage.getItem('admin_token');
+      }
+    } catch(e) { /* ignore parse errors */ }
+  }
+  // Fallback to the generic token for student/faculty
+  if (!token) {
+    token = localStorage.getItem('token');
+  }
+  
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
