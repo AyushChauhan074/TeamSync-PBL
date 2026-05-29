@@ -13,6 +13,7 @@ const FacultyEvaluations = () => {
   
   // Scheduling State
   const [meetupTime, setMeetupTime] = useState('');
+  const [meetupLocation, setMeetupLocation] = useState('');
   
   // Grading State
   const [gradesInput, setGradesInput] = useState({});
@@ -203,40 +204,33 @@ const FacultyEvaluations = () => {
       </div>
 
       {/* Right Context Pane - 70% */}
-      <div style={{ width: '70%', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+      <div className="w-[70%] flex flex-col overflow-y-auto bg-gray-50">
         {!selectedTeam || !workspaceData ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.1rem' }}>
+          <div className="flex-1 flex items-center justify-center text-slate-400 text-lg">
             Select a team from the left pane to open the evaluation radar portal.
           </div>
         ) : (
-          <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
+          <div className="p-8 max-w-[1200px] mx-auto w-full">
             
             {/* Header */}
-            <div style={{ marginBottom: '2rem' }}>
-              <h1 style={{ margin: 0, color: '#0f172a', fontSize: '1.8rem' }}>{selectedTeam.name} Workspace</h1>
-              <p style={{ margin: '0.5rem 0 0 0', color: '#64748b' }}>{selectedTeam.project_name || 'No Project Title'} • {workspaceData.team.github_repo_url || 'No Repository'}</p>
+            <div className="mb-8">
+              <h1 className="m-0 text-slate-900 text-3xl font-bold">{selectedTeam.name} Workspace</h1>
+              <p className="mt-2 text-slate-500">{selectedTeam.project_name || 'No Project Title'} • {workspaceData.team.github_repo_url || 'No Repository'}</p>
             </div>
 
-            {/* Step 1: Active Milestone Phase Selector */}
-            <div style={{ marginBottom: '2rem', background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: '0 0 1rem 0', color: '#1e293b' }}>1. Active Milestone Phase</h3>
-              <div style={{ display: 'flex', gap: '1rem' }}>
+            {/* A. Milestone Phase Navigation Bar */}
+            <div className="mb-6 bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+              <h3 className="m-0 mb-4 text-slate-800 font-semibold">Active Milestone Phase</h3>
+              <div className="flex gap-4">
                 {['planning', 'development', 'evaluation'].map(phase => (
                   <button
                     key={phase}
                     onClick={() => handlePhaseChange(phase)}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      background: selectedPhase === phase ? '#3b82f6' : '#f1f5f9',
-                      color: selectedPhase === phase ? 'white' : '#475569',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      textTransform: 'capitalize',
-                      transition: 'all 0.2s ease'
-                    }}
+                    className={`flex-1 py-3 px-4 rounded-lg font-semibold capitalize transition-all duration-200 ${
+                      selectedPhase === phase 
+                        ? 'bg-[#1d4ed8] text-white shadow-md' 
+                        : 'bg-[#f3f4f6] text-slate-600 hover:bg-slate-200'
+                    }`}
                   >
                     {phase}
                   </button>
@@ -244,87 +238,102 @@ const FacultyEvaluations = () => {
               </div>
             </div>
 
-            {/* Step 2: Meetup Appointment Slot */}
-            <div style={{ marginBottom: '2rem', background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: '0 0 1rem 0', color: '#1e293b' }}>2. Meetup Appointment Slot</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#475569', marginBottom: '0.5rem' }}>
-                    Current Schedule: <span style={{ color: '#0f172a', fontWeight: '600' }}>{getScheduledTimeText()}</span>
-                  </label>
-                  <input 
-                    type="datetime-local" 
-                    value={meetupTime}
-                    onChange={(e) => setMeetupTime(e.target.value)}
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', color: '#111827', fontSize: '1rem', background: '#f8fafc' }} 
-                    className="high-contrast-picker"
-                  />
+            {/* B. Dual-Column Structural Control Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-6">
+              
+              {/* Left Sub-Column (2/5 Width) - Meetup Scheduler Card */}
+              <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col">
+                <h3 className="m-0 mb-4 text-slate-800 font-semibold">Schedule Milestone Presentation</h3>
+                
+                <div className="flex-1 flex flex-col gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-2">
+                      Current Schedule: <span className="text-slate-900 font-semibold">{getScheduledTimeText()}</span>
+                    </label>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Select Date & Time</label>
+                    <input 
+                      type="datetime-local" 
+                      value={meetupTime}
+                      onChange={(e) => setMeetupTime(e.target.value)}
+                      className="w-full p-3 rounded-lg border border-slate-300 outline-none text-[#111827] !important bg-slate-50" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">📝 Meetup Agenda / Location</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Lab 3, CSE Block"
+                      value={meetupLocation}
+                      onChange={(e) => setMeetupLocation(e.target.value)}
+                      className="w-full p-3 rounded-lg border border-slate-300 outline-none text-[#111827] !important bg-slate-50"
+                    />
+                  </div>
                 </div>
+
                 <button 
                   onClick={handleScheduleMeetup}
-                  style={{ marginTop: '1.5rem', padding: '0.75rem 1.5rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  className="mt-6 w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold cursor-pointer flex items-center justify-center gap-2 transition-colors"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                  Confirm Slot
+                  ⚡ [ Save Meetup Appointment ]
                 </button>
               </div>
-            </div>
 
-            {/* Step 3: Role-Based Individual Grading Scorecard */}
-            <div style={{ marginBottom: '2rem', background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: '0 0 1rem 0', color: '#1e293b' }}>3. Role-Based Individual Grading Scorecard</h3>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>Evaluate distinct component artifacts assigned to each member for this phase.</p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {workspaceData.members.length === 0 ? (
-                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', color: '#64748b', textAlign: 'center' }}>
-                    No students currently assigned to this team.
-                  </div>
-                ) : (
-                  workspaceData.members.map((student) => (
-                    <div key={student.id} style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                          <span style={{ fontWeight: '600', color: '#111827' }}>{student.name}</span>
-                          <span style={{ fontSize: '0.7rem', fontFamily: 'monospace', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
-                            {student.project_role || "Unassigned Track"}
-                          </span>
-                        </div>
-                        <input 
-                          type="text" 
-                          placeholder="Evaluator feedback..." 
-                          value={gradesInput[student.id]?.feedback || ''}
-                          onChange={(e) => handleGradeChange(student.id, 'feedback', e.target.value)}
-                          style={{ width: '90%', padding: '0.5rem', fontSize: '0.875rem', borderRadius: '4px', border: '1px solid #cbd5e1', outline: 'none' }}
-                        />
-                      </div>
-
-                      <div style={{ width: '120px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
-                        <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>Score (0-100)</label>
-                        <input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          value={gradesInput[student.id]?.score || ''}
-                          onChange={(e) => handleGradeChange(student.id, 'score', e.target.value)}
-                          style={{ width: '80px', padding: '0.5rem', fontSize: '1rem', fontWeight: '600', textAlign: 'center', borderRadius: '6px', border: '1px solid #cbd5e1', color: '#111827', outline: 'none' }} 
-                        />
-                      </div>
+              {/* Right Sub-Column (3/5 Width) - Individual Role Grading Matrix */}
+              <div className="lg:col-span-3 bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                <h3 className="m-0 mb-4 text-slate-800 font-semibold">Individual Role-Based Evaluation</h3>
+                
+                <div className="flex flex-col gap-4">
+                  {workspaceData.members.length === 0 ? (
+                    <div className="p-4 bg-slate-50 rounded-lg text-slate-500 text-center">
+                      No students currently assigned to this team.
                     </div>
-                  ))
-                )}
-              </div>
+                  ) : (
+                    workspaceData.members.map((student) => (
+                      <div key={student.id} className="flex flex-col sm:flex-row sm:items-center bg-slate-50 p-4 rounded-lg border border-slate-200 gap-4">
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-semibold text-slate-900">{student.name}</span>
+                            <span className="text-xs font-mono px-2 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                              🏷️ {student.project_role || "Unassigned Track"}
+                            </span>
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="Evaluator feedback..." 
+                            value={gradesInput[student.id]?.feedback || ''}
+                            onChange={(e) => handleGradeChange(student.id, 'feedback', e.target.value)}
+                            className="w-full p-2 text-sm rounded border border-slate-300 outline-none focus:border-blue-500 text-[#111827] !important bg-white"
+                          />
+                        </div>
 
-              <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-                <button 
-                  onClick={handleSubmitGrades}
-                  style={{ padding: '0.875rem 2rem', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.1), 0 2px 4px -1px rgba(79, 70, 229, 0.06)', transition: 'background 0.2s ease' }}
-                  onMouseEnter={(e) => e.target.style.background = '#4338ca'}
-                  onMouseLeave={(e) => e.target.style.background = '#4f46e5'}
-                >
-                  ⚡ Compile and Dispatch Phase Grades
-                </button>
+                        <div className="w-full sm:w-[120px] flex flex-col sm:items-end gap-1">
+                          <label className="text-xs text-slate-500 font-medium">Score: [ / 100 ]</label>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            max="100" 
+                            value={gradesInput[student.id]?.score || ''}
+                            onChange={(e) => handleGradeChange(student.id, 'score', e.target.value)}
+                            className="w-[80px] p-2 text-base font-semibold text-center rounded border border-slate-300 text-[#111827] !important outline-none focus:border-blue-500 bg-white" 
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* C. Global Submit Footer Action */}
+                <div className="mt-8 flex justify-end">
+                  <button 
+                    onClick={handleSubmitGrades}
+                    className="py-3 px-6 bg-gradient-to-r from-indigo-600 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white rounded-lg font-semibold cursor-pointer shadow-lg transition-all transform hover:-translate-y-0.5"
+                  >
+                    🚀 [ Submit All Phase Individual Grades ]
+                  </button>
+                </div>
+
               </div>
             </div>
             
