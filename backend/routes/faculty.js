@@ -9,6 +9,8 @@ module.exports = (pool) => {
       const viewMode = req.query.viewMode || 'mentor';
       const facultyId = req.user.userId;
 
+      console.log(`[FACULTY DB DEBUG] Fetching assigned teams for User ID: ${facultyId} | ViewMode: ${viewMode}`);
+
       if (!['mentor', 'evaluator'].includes(viewMode)) {
         return res.status(400).json({ error: 'Invalid view mode' });
       }
@@ -24,7 +26,10 @@ module.exports = (pool) => {
           t.evaluator_id,
           (SELECT COUNT(*) FROM users u WHERE u.team_id = t.id AND u.role = 'student') AS roster_size
         FROM teams t
-        WHERE ${viewMode === 'mentor' ? 't.mentor_id' : 't.evaluator_id'} = $1
+        WHERE 
+          t.${viewMode === 'mentor' ? 'mentor_id' : 'evaluator_id'}::text = $1::text 
+          OR t.${viewMode === 'mentor' ? 'mentor_id' : 'evaluator_id'}::text = (SELECT roll_number FROM users WHERE id = $1)
+          OR t.${viewMode === 'mentor' ? 'mentor_id' : 'evaluator_id'}::text = (SELECT id::text FROM users WHERE id = $1)
         ORDER BY t.created_at DESC;
       `;
 
@@ -44,8 +49,18 @@ module.exports = (pool) => {
       const { teamId } = req.params;
       const facultyId = req.user.userId;
 
-      // Ensure faculty is evaluating this team
-      const teamCheck = await pool.query('SELECT name, project_name, github_repo_url FROM teams WHERE id = $1 AND evaluator_id = $2', [teamId, facultyId]);
+      console.log(`[FACULTY DB DEBUG] Opening evaluation workspace for Team ID: ${teamId} | User ID: ${facultyId}`);
+
+      // Ensure faculty is evaluating this team using safe subquery matching
+      const teamCheck = await pool.query(`
+        SELECT name, project_name, github_repo_url 
+        FROM teams 
+        WHERE id = $1 AND (
+          evaluator_id::text = $2::text 
+          OR evaluator_id::text = (SELECT roll_number FROM users WHERE id = $2)
+          OR evaluator_id::text = (SELECT id::text FROM users WHERE id = $2)
+        )
+      `, [teamId, facultyId]);
       if (teamCheck.rows.length === 0) {
         return res.status(403).json({ error: 'You are not assigned to evaluate this team' });
       }
