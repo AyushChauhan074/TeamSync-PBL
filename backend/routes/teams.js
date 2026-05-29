@@ -123,11 +123,11 @@ router.post('/', async (req, res) => {
       code
     ]);
     
-    // Add creator as team leader by updating users table
+    // Add creator as team leader to the team_members table
     const teamId = result.rows[0].id;
     await client.query(
-      'UPDATE users SET team_id = $1 WHERE id = $2',
-      [teamId, createdBy]
+      'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)',
+      [teamId, createdBy, 'leader']
     );
     
     // Log the activity securely
